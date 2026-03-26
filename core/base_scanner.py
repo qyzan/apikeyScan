@@ -10,7 +10,13 @@ class BaseScanner:
         try:
             full_body = response_obj.json()
         except:
-            full_body = response_obj.text
+            if "image/" in response_obj.headers.get("Content-Type", ""):
+                import base64
+                b64_str = base64.b64encode(response_obj.content).decode('utf-8')
+                ctype = response_obj.headers["Content-Type"]
+                full_body = f"data:{ctype};base64,{b64_str}"
+            else:
+                full_body = response_obj.text
 
         if status_code == 200:
             status_text = "VULNERABLE"

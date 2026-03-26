@@ -154,3 +154,8 @@ class GoogleScanner(BaseScanner):
             sql_url = f"https://sqladmin.googleapis.com/v1/projects/{self.project_id}/instances?key={self.api_key}"
             resp = requests.get(sql_url, headers=self.headers)
             self.log_result("Google Cloud SQL", resp.status_code, resp)
+
+        # 22. GOOGLE GEMINI API (Generative Language API)
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={self.api_key}"
+        resp = requests.get(gemini_url, headers=self.headers)
+        self.log_result("Google Gemini API", resp.status_code, resp)

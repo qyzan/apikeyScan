@@ -22,7 +22,7 @@ class ReportEngine:
         
         masked_key = scanner.api_key[:5] + "..." + scanner.api_key[-5:] if len(scanner.api_key) > 10 else "***"
         
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             json.dump({
                 "scan_metadata": {
                     "provider": provider_name,
@@ -48,8 +48,8 @@ class ReportEngine:
         body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e2f; color: #e0e0e0; padding: 20px; }}
         .container {{ max-width: 1200px; margin: 0 auto; background: #27293d; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
         h1 {{ border-bottom: 2px solid #e14eca; padding-bottom: 10px; color: #ffffff; }}
-        table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
-        th, td {{ border: 1px solid #333; padding: 12px; text-align: left; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed; }}
+        th, td {{ border: 1px solid #333; padding: 12px; text-align: left; word-wrap: break-word; overflow-wrap: break-word; }}
         th {{ background-color: #1e1e2f; color: #ffeb3b; }}
         tr:nth-child(even) {{ background-color: #2b2b40; }}
         .vulnerable {{ color: #00f2fe; font-weight: bold; }}
@@ -59,7 +59,7 @@ class ReportEngine:
         .details-btn {{ background-color: #1f8ef1; color: #ffffff; border: none; padding: 8px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; }}
         .details-btn:hover {{ background-color: #007bff; }}
         .details-row {{ display: none; background-color: #1e1e2f; }}
-        pre {{ background: #121212; padding: 15px; border-radius: 5px; overflow-x: auto; white-space: pre-wrap; font-size: 13px; color: #00f2fe; border: 1px solid #333; }}
+        pre {{ background: #121212; padding: 15px; border-radius: 5px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; word-break: break-all; font-size: 13px; color: #00f2fe; border: 1px solid #333; }}
         .header-info {{ margin-bottom: 20px; font-size: 16px; }}
         .header-info strong {{ color: #ffeb3b; }}
     </style>
@@ -99,7 +99,13 @@ class ReportEngine:
             else: status_class = "other"
             
             url_short = raw["url"][:60] + "..." if len(raw["url"]) > 60 else raw["url"]
-            body_pretty = json.dumps(raw["response_body"], indent=2) if isinstance(raw["response_body"], dict) else str(raw["response_body"])
+            raw_body = raw["response_body"]
+            if isinstance(raw_body, str) and raw_body.startswith("data:image/"):
+                body_pretty = f'<br/><img src="{raw_body}" alt="API Image Response" style="max-width: 100%; border: 1px solid #444; border-radius: 5px;" />'
+            else:
+                body_str = json.dumps(raw_body, indent=2) if isinstance(raw_body, dict) else str(raw_body)
+                import html
+                body_pretty = f"<pre>{html.escape(body_str)}</pre>"
             
             html_content += f"""
             <tr>
@@ -112,7 +118,7 @@ class ReportEngine:
                 <td colspan="4">
                     <strong>Status Code:</strong> {raw['status_code']}<br/><br/>
                     <strong>Response body (raw payload):</strong>
-                    <pre>{body_pretty}</pre>
+                    {body_pretty}
                 </td>
             </tr>"""
             
@@ -122,6 +128,6 @@ class ReportEngine:
 </body>
 </html>"""
         
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"{Fore.BLUE}[INFO] HTML Report saved to: {filename}{Style.RESET_ALL}")
