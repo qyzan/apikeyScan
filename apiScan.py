@@ -113,6 +113,21 @@ def main():
         referer = parsed_args.referer
         collection = parsed_args.collection
         bucket = parsed_args.bucket
+
+        # Prompt for missing config even in CLI mode
+        if provider == "aws" and not aws_secret:
+            aws_secret = input(f"{Fore.YELLOW}Enter AWS Secret Access Key:{Style.RESET_ALL} ").strip()
+        
+        if provider == "google":
+            if not project_id:
+                project_id = input(f"{Fore.YELLOW}Enter Project ID (Optional, press Enter to skip):{Style.RESET_ALL} ").strip() or None
+            if not referer:
+                referer = input(f"{Fore.YELLOW}Enter Referer (Optional, press Enter to skip):{Style.RESET_ALL} ").strip() or None
+            if collection == "users":
+                col_input = input(f"{Fore.YELLOW}Enter Firestore Collection to check [default: users]:{Style.RESET_ALL} ").strip()
+                if col_input: collection = col_input
+            if not bucket:
+                bucket = input(f"{Fore.YELLOW}Enter GCS Bucket Name [default: Project ID]:{Style.RESET_ALL} ").strip() or None
         
         json_opt = parsed_args.json
         html_opt = parsed_args.html
