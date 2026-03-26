@@ -1,8 +1,8 @@
-# Universal API Security Recon (apiScan)
+# Universal API Security Recon (apiKeyScan)
 
-**apiScan** is an extremely lightweight, highly modular API Security Reconnaissance tool designed to quickly analyze the risk impact of leaked API Keys, access tokens, and cloud credentials. 
+**apiKeyScan** is an extremely lightweight, highly modular API Security Reconnaissance tool designed to quickly analyze the risk impact of leaked API Keys, access tokens, and cloud credentials. 
 
-Instead of bloated frameworks, apiScan focuses purely on critical endpoint validation across major cloud providers (Google Cloud, Azure, AWS, and OpenAI). It checks if an exposed key can be used to exfiltrate data, consume massive billing quotas, manipulate authentication services, or even move laterally through obscure CI/CD infrastructure.
+Instead of bloated frameworks, apiKeyScan focuses purely on critical endpoint validation across major cloud providers (Google Cloud, Azure, AWS, and OpenAI). It checks if an exposed key can be used to exfiltrate data, consume massive billing quotas, manipulate authentication services, or even move laterally through obscure CI/CD infrastructure.
 
 ---
 
@@ -21,8 +21,8 @@ Requires **Python 3.8+**.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/qyzan/apiScan.git
-   cd apiScan
+   git clone https://github.com/qyzan/apiKeyScan.git
+   cd apiKeyScan
    ```
 
 2. Install dependencies:
@@ -39,7 +39,7 @@ Requires **Python 3.8+**.
 ### Interactive Mode (Recommended)
 Simply execute the script without any arguments to trigger the automated wizard:
 ```bash
-python apiScan.py
+python apiKeyScan.py
 ```
 
 ### CLI Automation Mode
@@ -47,17 +47,17 @@ Ideal for CI/CD pipelines, bash loops, or mass-scanning tasks. If any dependent 
 
 **1. Google API Scan with HTML Report**
 ```bash
-python apiScan.py --provider google --key AIzaSyABCD1234EFGH5678IJKL --html
+python apiKeyScan.py --provider google --key AIzaSyABCD1234EFGH5678IJKL --html
 ```
 
 **2. OpenAI Quota Check with JSON logging**
 ```bash
-python apiScan.py -p openai -k sk-proj-1234abcd5678efgh --json
+python apiKeyScan.py -p openai -k sk-proj-1234abcd5678efgh --json
 ```
 
 **3. AWS Credential Check (Requires Secret Key)**
 ```bash
-python apiScan.py -p aws -k AKIAXXXXXX --secret YYYYYYYYYYYYYYYY --html
+python apiKeyScan.py -p aws -k AKIAXXXXXX --secret YYYYYYYYYYYYYYYY --html
 ```
 
 ### Advanced Flags
@@ -73,8 +73,8 @@ python apiScan.py -p aws -k AKIAXXXXXX --secret YYYYYYYYYYYYYYYY --html
 The system is highly modularized via an OOP `BaseScanner` interface.
 
 ```text
-apiScan/
-├── apiScan.py                 # The lightweight entry router
+apiKeyScan/
+├── apiKeyScan.py                 # The lightweight entry router
 ├── core/
 │   ├── base_scanner.py        # Abstract Inheritance Class & HTTP Classifiers
 │   └── report_engine.py       # Handles console coloring, JSON, and HTML exports
@@ -93,3 +93,4 @@ To create a new scanner (e.g., `github_scanner.py`), simply inherit from `BaseSc
 
 **Educational and Authorized Security Use Only.**
 The author(s) of this project are not responsible for any misuse or damage caused by this tool. Never use this tool against infrastructure you do not have explicit, documented permission to test. Always adhere to responsible disclosure guidelines when dealing with compromised credentials.
+
