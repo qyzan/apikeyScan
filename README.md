@@ -25,8 +25,8 @@ Requires **Python 3.8+**.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/YourUsername/apiGoogleScan.git
-   cd apiGoogleScan
+   git clone https://github.com/qyzan/apiScan.git
+   cd apiScan
    ```
 
 2. Install dependencies:
