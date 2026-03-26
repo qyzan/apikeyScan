@@ -7,25 +7,40 @@ class BaseScanner:
         self.raw_data = []
 
     def log_result(self, service_name, status_code, response_obj):
+        try:
+            full_body = response_obj.json()
+        except:
+            full_body = response_obj.text
+
         if status_code == 200:
             status_text = "VULNERABLE"
             color = Fore.GREEN
+            # False-positive check for Google APIs that return 200 OK but deny within the body
+            if isinstance(full_body, dict):
+                if full_body.get("status") == "REQUEST_DENIED" or "error_message" in full_body or "error" in full_body:
+                    status_text = "RESTRICTED (API DENIED)"
+                    color = Fore.RED
         elif status_code == 403:
-            status_text = "RESTRICTED"
+            status_text = "RESTRICTED (DENIED BY POLICY)"
             color = Fore.RED
         elif status_code == 401:
-            status_text = "UNAUTHORIZED"
+            status_text = "UNAUTHORIZED (INVALID/REVOKED KEY)"
             color = Fore.RED
+        elif status_code == 404:
+            status_text = "NOT FOUND (TARGET MISSING/DELETED)"
+            color = Fore.YELLOW
+        elif status_code == 400:
+            if isinstance(full_body, dict) and 'error' in full_body and isinstance(full_body['error'], dict) and full_body['error'].get('status') == 'API_KEY_INVALID':
+                 status_text = "UNAUTHORIZED (INVALID/REVOKED KEY)"
+                 color = Fore.RED
+            else:
+                 status_text = "BAD REQUEST (INVALID ARGS/PAYLOAD)"
+                 color = Fore.YELLOW
         else:
             status_text = f"STATUS {status_code}"
             color = Fore.YELLOW
         
         print(f"{color}[{status_text}]{Style.RESET_ALL} Checking {service_name}...")
-        
-        try:
-            full_body = response_obj.json()
-        except:
-            full_body = response_obj.text
 
         self.results.append({
             "service": service_name,

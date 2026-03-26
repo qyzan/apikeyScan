@@ -107,3 +107,35 @@ class AWSScanner(BaseScanner):
             self.log_boto3_result("AWS Lambda", "ListFunctions", True, "Successfully fetched Lambda functions")
         except Exception as e:
             self.log_boto3_result("AWS Lambda", "ListFunctions", False, str(e))
+
+        # 6. SES GetSendQuota
+        ses = self._get_client('ses')
+        try:
+            resp = ses.get_send_quota()
+            self.log_boto3_result("AWS SES (Email)", "GetSendQuota", True, resp)
+        except Exception as e:
+            self.log_boto3_result("AWS SES (Email)", "GetSendQuota", False, str(e))
+
+        # 7. SNS ListTopics
+        sns = self._get_client('sns')
+        try:
+            resp = sns.list_topics()
+            self.log_boto3_result("AWS SNS", "ListTopics", True, resp)
+        except Exception as e:
+            self.log_boto3_result("AWS SNS", "ListTopics", False, str(e))
+
+        # 8. SQS ListQueues
+        sqs = self._get_client('sqs')
+        try:
+            resp = sqs.list_queues()
+            self.log_boto3_result("AWS SQS", "ListQueues", True, resp)
+        except Exception as e:
+            self.log_boto3_result("AWS SQS", "ListQueues", False, str(e))
+
+        # 9. Route53 ListHostedZones
+        route53 = self._get_client('route53')
+        try:
+            resp = route53.list_hosted_zones()
+            self.log_boto3_result("AWS Route53", "ListHostedZones", True, resp)
+        except Exception as e:
+            self.log_boto3_result("AWS Route53", "ListHostedZones", False, str(e))

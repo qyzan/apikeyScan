@@ -20,11 +20,21 @@ class GoogleScanner(BaseScanner):
             resp = requests.get(gcs_url, headers=self.headers)
             self.log_result(f"GCS Bucket (List: {target_bucket})", resp.status_code, resp)
         
-        # 2. FIREBASE REMOTE CONFIG
+        # 2a. FIREBASE REMOTE CONFIG (Management API - Template Download)
         if self.project_id:
-            rc_url = f"https://firebaseremoteconfig.googleapis.com/v1/projects/{self.project_id}/namespaces/firebase:fetch?key={self.api_key}"
-            resp = requests.post(rc_url, headers=self.headers)
-            self.log_result("Firebase Remote Config", resp.status_code, resp)
+            rc_url = f"https://firebaseremoteconfig.googleapis.com/v1/projects/{self.project_id}/remoteConfig?key={self.api_key}"
+            resp = requests.get(rc_url, headers=self.headers)
+            self.log_result("Firebase Remote Config (Template)", resp.status_code, resp)
+
+        # 2b. FIREBASE REALTIME DATABASE
+        if self.project_id:
+            rtdb_url1 = f"https://{self.project_id}-default-rtdb.firebaseio.com/.json?key={self.api_key}"
+            resp1 = requests.get(rtdb_url1, headers=self.headers)
+            self.log_result("Firebase RTDB (-default-rtdb)", resp1.status_code, resp1)
+            
+            rtdb_url2 = f"https://{self.project_id}.firebaseio.com/.json?key={self.api_key}"
+            resp2 = requests.get(rtdb_url2, headers=self.headers)
+            self.log_result("Firebase RTDB (Legacy)", resp2.status_code, resp2)
         
         # 3. FIRESTORE
         if self.project_id:
@@ -33,9 +43,16 @@ class GoogleScanner(BaseScanner):
             self.log_result(f"Firestore (List {collection_name})", resp.status_code, resp)
         
         # 4. IDENTITY TOOLKIT
-        payload = {"email": "pentest_test_1337@example.com", "password": "Password123!", "returnSecureToken": True}
+        test_email = "pentest_test_1337@example.com"
+        test_pass = "Password123!"
+        payload = {"email": test_email, "password": test_pass, "returnSecureToken": True}
         resp = requests.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={self.api_key}", json=payload, headers=self.headers)
-        self.log_result("Identity Toolkit (SignUp)", resp.status_code, resp)
+        
+        svc_name = "Identity Toolkit (SignUp)"
+        if resp.status_code == 200:
+            svc_name += f" [Created: {test_email} : {test_pass}]"
+            
+        self.log_result(svc_name, resp.status_code, resp)
 
         # 5. GOOGLE MAPS (Static Map)
         resp = requests.get(f"https://maps.googleapis.com/maps/api/staticmap?center=45,10&zoom=07&size=400x400&key={self.api_key}", headers=self.headers)
@@ -96,9 +113,44 @@ class GoogleScanner(BaseScanner):
         resp = requests.get(f"https://maps.googleapis.com/maps/api/distancematrix/json?origins=Washington,DC&destinations=New+York+City,NY&key={self.api_key}", headers=self.headers)
         self.log_result("Google Distance Matrix API", resp.status_code, resp)
 
-        # 17. FIREBASE CLOUD MESSAGING (FCM) LEGACY
-        fcm_headers = {"Authorization": f"key={self.api_key}", "Content-Type": "application/json"}
-        for k, v in self.headers.items(): fcm_headers[k] = v
-        fcm_data = {"to": "/topics/test", "notification": {"title": "Test", "body": "Pentest"}}
-        resp = requests.post("https://fcm.googleapis.com/fcm/send", json=fcm_data, headers=fcm_headers)
-        self.log_result("FCM Legacy API", resp.status_code, resp)
+        # 17. FIREBASE CLOUD MESSAGING (FCM) HTTP v1
+        if self.project_id:
+            fcm_v1_url = f"https://fcm.googleapis.com/v1/projects/{self.project_id}/messages:send"
+            fcm_headers = {"Content-Type": "application/json"}
+            # The new API strictly requires OAuth2.0 bearer, but we pass the key gracefully.
+            if "Authorization" not in self.headers:
+                fcm_headers["Authorization"] = f"Bearer {self.api_key}" 
+            for k, v in self.headers.items(): fcm_headers[k] = v
+
+            fcm_data = {
+                "message": {
+                    "topic": "test",
+                    "notification": {"title": "Test", "body": "Pentest"}
+                }
+            }
+            resp = requests.post(f"{fcm_v1_url}?key={self.api_key}", json=fcm_data, headers=fcm_headers)
+            self.log_result("FCM HTTP v1 API", resp.status_code, resp)
+
+        # 18. GOOGLE SECRETS MANAGER
+        if self.project_id:
+            sm_url = f"https://secretmanager.googleapis.com/v1/projects/{self.project_id}/secrets?key={self.api_key}"
+            resp = requests.get(sm_url, headers=self.headers)
+            self.log_result("Google Secret Manager", resp.status_code, resp)
+
+        # 19. CLOUD KMS (Key Management Service)
+        if self.project_id:
+            kms_url = f"https://cloudkms.googleapis.com/v1/projects/{self.project_id}/locations/global/keyRings?key={self.api_key}"
+            resp = requests.get(kms_url, headers=self.headers)
+            self.log_result("Google Cloud KMS", resp.status_code, resp)
+
+        # 20. CLOUD BUILD
+        if self.project_id:
+            build_url = f"https://cloudbuild.googleapis.com/v1/projects/{self.project_id}/builds?key={self.api_key}"
+            resp = requests.get(build_url, headers=self.headers)
+            self.log_result("Google Cloud Build", resp.status_code, resp)
+            
+        # 21. GOOGLE CLOUD SQL
+        if self.project_id:
+            sql_url = f"https://sqladmin.googleapis.com/v1/projects/{self.project_id}/instances?key={self.api_key}"
+            resp = requests.get(sql_url, headers=self.headers)
+            self.log_result("Google Cloud SQL", resp.status_code, resp)

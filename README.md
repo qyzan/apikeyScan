@@ -2,20 +2,16 @@
 
 **apiScan** is an extremely lightweight, highly modular API Security Reconnaissance tool designed to quickly analyze the risk impact of leaked API Keys, access tokens, and cloud credentials. 
 
-Instead of bloated frameworks, apiScan focuses purely on critical endpoint validation across major cloud providers (Google Cloud, Azure, AWS, and OpenAI). It checks if an exposed key can be used to exfiltrate data, consume massive billing quotas, or manipulate authentication services.
+Instead of bloated frameworks, apiScan focuses purely on critical endpoint validation across major cloud providers (Google Cloud, Azure, AWS, and OpenAI). It checks if an exposed key can be used to exfiltrate data, consume massive billing quotas, manipulate authentication services, or even move laterally through obscure CI/CD infrastructure.
 
 ---
 
 ## 🚀 Features
-
-- **Interactive Wizard Mode**: Don't want to type arguments? Just run `python apiScan.py` and let the aesthetic CLI guide you.
-- **Advanced Modular OOP Architecture**: Easily write plugins for new services by dumping a file into the `scanners/` directory. No spaghetti code.
-- **Aesthetic Reporting Engine**: Generate gorgeous offline HTML Dashboards and pristine JSON datasets to attach to your Bug Bounty/VAPT reports automatically.
 - **Extensive Service Coverage**:
-  - **Google Workspace & GCP**: Checks 17 highly-critical endpoints including GCS Buckets, Firebase, Firestore, Custom Search, Identity Toolkit, Maps Suite, and FCM.
+  - **Google Workspace & GCP (21 Checks)**: Covers critical infrastructure like GCS Buckets, Firebase Realtime DB, Firestore, Identity Toolkit, Maps Suite, and modern FCM HTTP v1. **Also hunts obscure services** like Google Secret Manager, Cloud KMS, Cloud Build, and Cloud SQL.
   - **Azure Cognitive & Cloud**: Validates Bing Search, Text Analytics, Face API, Translator, and Maps.
-  - **AWS (Boto3 integration)**: Confirms `GetCallerIdentity`, `ListBuckets`, `DescribeInstances`, `GetUser`, and `ListFunctions`.
-  - **OpenAI**: Verifies models and chat completions for quota exhaustion testing.
+  - **AWS (Boto3 integration)**: Confirms administrative privileges via `GetCallerIdentity`, `ListBuckets`, `GetUser`, and `DescribeInstances`. **Also hunts lateral movement** via SES (Email Spamming), SNS, SQS, and Route53 (DNS Hijacking).
+  - **OpenAI**: Verifies models and chat completions for quota exhaustion testing on leaked ChatGPT keys.
 
 ---
 
@@ -34,7 +30,7 @@ Requires **Python 3.8+**.
    pip install -r requirements.txt
    ```
 
-*(Note: `boto3` is required for AWS scanning. If you do not plan to scan AWS, the tool will gracefully skip it without crashing).*
+*(Note: `boto3` is officially required for AWS scanning. If you do not plan to scan AWS, the tool will gracefully skip the import crash).*
 
 ---
 
@@ -47,7 +43,7 @@ python apiScan.py
 ```
 
 ### CLI Automation Mode
-Ideal for CI/CD pipelines, bash loops, or mass-scanning tasks.
+Ideal for CI/CD pipelines, bash loops, or mass-scanning tasks. If any dependent variable is missing, the script will interactively ask for it.
 
 **1. Google API Scan with HTML Report**
 ```bash
@@ -65,7 +61,7 @@ python apiScan.py -p aws -k AKIAXXXXXX --secret YYYYYYYYYYYYYYYY --html
 ```
 
 ### Advanced Flags
-- `--project-id [ID]` : Specify GCP Project ID (enhances Firebase/Firestore checking).
+- `--project-id [ID]` : Specify GCP Project ID (enhances Firebase/Firestore/Secrets checking).
 - `--referer [URL]` : Spoof the HTTP Referer header to bypass poorly configured restrictions.
 - `--collection [NAME]` : Specify custom Firestore collection name to query (default: `users`).
 - `--bucket [NAME]` : Specify a target GCS Bucket (default falls back to project-id).
@@ -76,20 +72,20 @@ python apiScan.py -p aws -k AKIAXXXXXX --secret YYYYYYYYYYYYYYYY --html
 
 The system is highly modularized via an OOP `BaseScanner` interface.
 
-```
+```text
 apiScan/
 ├── apiScan.py                 # The lightweight entry router
 ├── core/
-│   ├── base_scanner.py        # Abstract Inheritance Class
+│   ├── base_scanner.py        # Abstract Inheritance Class & HTTP Classifiers
 │   └── report_engine.py       # Handles console coloring, JSON, and HTML exports
 └── scanners/
-    ├── google_scanner.py      # Module specific logic
+    ├── google_scanner.py      # Google Cloud & Workspace Logic
     ├── azure_scanner.py       
     ├── openai_scanner.py      
     └── aws_scanner.py         
 ```
 
-To create a new scanner (e.g., `github_scanner.py`), simply inherit from `BaseScanner`, wrap your requests, and call `self.log_result("Service Name", response.status_code, response)`. The core engine handles the rest seamlessly.
+To create a new scanner (e.g., `github_scanner.py`), simply inherit from `BaseScanner`, construct your queries, and call `self.log_result("Service Name", response.status_code, response)`. The core engine handles colorization, false-positives, and JSON/HTML extraction automatically.
 
 ---
 
