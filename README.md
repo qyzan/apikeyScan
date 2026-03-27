@@ -1,4 +1,4 @@
-# Universal API Security Recon (apiKeyScan)
+# APIKey Security Recon (apiKeyScan)
 
 **apiKeyScan** is an extremely lightweight, highly modular API Security Reconnaissance tool designed to quickly analyze the risk impact of leaked API Keys, access tokens, and cloud credentials. 
 
