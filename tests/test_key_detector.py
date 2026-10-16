@@ -98,7 +98,7 @@ class TestKeyExtraction:
         test_file = tmp_path / "keys.py"
         google_key = "AIza" + "B" * 35
         aws_key = "AKIA" + "A" * 16
-        test_file.write_text(f'google = "{google_key}"\n' f'aws = "{aws_key}"\n')
+        test_file.write_text(f'google = "{google_key}"\naws = "{aws_key}"\n')
 
         found = extract_keys_from_directory(str(tmp_path))
         providers = {f["provider"] for f in found}

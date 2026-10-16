@@ -339,15 +339,15 @@ class ReportEngine:
 
             html_content += f"""
             <tr data-status="{data_status}">
-                <td>{html_lib.escape(res['service'])}</td>
-                <td class="{status_class}">{html_lib.escape(res['status_text'])}</td>
+                <td>{html_lib.escape(res["service"])}</td>
+                <td class="{status_class}">{html_lib.escape(res["status_text"])}</td>
                 <td>{sev_badge}</td>
-                <td><a href="{html_lib.escape(str(raw['url']))}" style="color: #1f8ef1; text-decoration: none;" target="_blank">{html_lib.escape(url_short)}</a></td>
+                <td><a href="{html_lib.escape(str(raw["url"]))}" style="color: #1f8ef1; text-decoration: none;" target="_blank">{html_lib.escape(url_short)}</a></td>
                 <td><button class="details-btn" onclick="toggleDetails('detail-{i}')">View Response</button></td>
             </tr>
             <tr id="detail-{i}" class="details-row">
                 <td colspan="5">
-                    <strong>Status Code:</strong> {raw.get('status_code', 'N/A')}<br/><br/>
+                    <strong>Status Code:</strong> {raw.get("status_code", "N/A")}<br/><br/>
                     <strong>Response Body:</strong>
                     {body_pretty}
                 </td>
