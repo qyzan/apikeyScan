@@ -33,7 +33,7 @@ class Severity(Enum):
     @property
     def color(self) -> str:
         """Return the colorama color string for this severity."""
-        return self.value[1]
+        return str(self.value[1])
 
 
 SEVERITY_ORDER: Dict[str, int] = {

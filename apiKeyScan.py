@@ -257,6 +257,7 @@ async def run_scan_command(args: argparse.Namespace) -> int:
             else:
                 has_error = True
     else:
+        assert api_key is not None
         if not provider:
             detection = await auto_detect_provider(
                 api_key,

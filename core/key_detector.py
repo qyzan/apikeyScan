@@ -204,9 +204,9 @@ def detect_provider(key: str) -> Optional[str]:
     """
     candidates = detect_by_regex(key)
     if len(candidates) == 1:
-        return candidates[0]["provider"]
+        return str(candidates[0]["provider"])
     if len(candidates) > 1:
-        return candidates[0]["provider"]
+        return str(candidates[0]["provider"])
     return None
 
 
