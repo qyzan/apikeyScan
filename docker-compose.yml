@@ -1,0 +1,7 @@
+version: "3.8"
+services:
+  apikeyscan:
+    build: .
+    volumes:
+      - ./reports:/app/reports
+    # Usage: docker-compose run apikeyscan scan -p google -k AIzaSy...

@@ -1,62 +1,140 @@
-import requests
+"""OpenAI API scanner with async checks for quota and data exposure.
+
+Validates Models, Chat Completions, DALL-E, Files, Fine-Tuning, Assistants,
+Vector Stores, Batches, and Moderations endpoints.
+"""
+
+from typing import Any, Dict
+
 from colorama import Fore, Style
-from core.base_scanner import BaseScanner
+
+from core.base_scanner import BaseScanner, Severity
+
 
 class OpenAIScanner(BaseScanner):
-    def __init__(self, api_key):
-        super().__init__(api_key)
+    """Scanner for OpenAI API keys.
 
-    def scan(self):
-        print(f"\n{Fore.CYAN}=== OPENAI API RECON ==={Style.RESET_ALL}\n")
-        
-        # Standard API Headers
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        # Beta Headers required for Assistants & Vector Stores
-        beta_headers = {
+    Checks model access, chat completions, image generation, file listing,
+    fine-tuning jobs, assistants, vector stores, batches, and moderations.
+    """
+
+    PROVIDER_NAME = "openai"
+    CHECKS = [
+        "OpenAI Models (Auth Validation)",
+        "OpenAI Chat Generative",
+        "OpenAI DALL-E Images",
+        "OpenAI Uploaded Files",
+        "OpenAI Fine-Tuning Jobs",
+        "OpenAI Assistants",
+        "OpenAI Vector Stores",
+        "OpenAI Batches",
+        "OpenAI Moderations",
+    ]
+
+    def __init__(self, api_key: str, **kwargs: Any) -> None:
+        """Initialize the OpenAI scanner.
+
+        Args:
+            api_key: The OpenAI API key to test (sk-... format).
+            **kwargs: Additional BaseScanner options.
+        """
+        super().__init__(api_key, **kwargs)
+
+    async def scan(self) -> None:
+        """Run all OpenAI API reconnaissance checks concurrently."""
+        print(f"\n{self._c(Fore.CYAN)}=== OPENAI API RECON ==={Style.RESET_ALL}\n")
+
+        headers: Dict[str, str] = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "OpenAI-Beta": "assistants=v2"
+        }
+        beta_headers: Dict[str, str] = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "OpenAI-Beta": "assistants=v2",
         }
 
-        # 1. Models List (Basic Auth Validation)
-        resp = requests.get("https://api.openai.com/v1/models", headers=headers)
-        self.log_result("OpenAI Models (Auth Validation)", resp.status_code, resp)
+        checks = [
+            self._check_models(headers),
+            self._check_chat(headers),
+            self._check_dalle(headers),
+            self._check_files(headers),
+            self._check_fine_tuning(headers),
+            self._check_assistants(beta_headers),
+            self._check_vector_stores(beta_headers),
+            self._check_batches(headers),
+            self._check_moderations(headers),
+        ]
+        await self._run_checks(checks)
 
-        # 2. Chat Completions (GPT-3.5/GPT-4 Generation)
+    async def _check_models(self, headers: Dict[str, str]) -> None:
+        """Check OpenAI Models list — basic auth validation."""
+        svc = "OpenAI Models (Auth Validation)"
+        ok, resp = await self._safe_get(svc, "https://api.openai.com/v1/models", headers=headers)
+        if ok and resp:
+            self.log_result(svc, resp.status, resp, severity=Severity.LOW)
+
+    async def _check_chat(self, headers: Dict[str, str]) -> None:
+        """Check OpenAI Chat Completions — generative quota access."""
+        svc = "OpenAI Chat Generative"
         payload = {"model": "gpt-3.5-turbo", "messages": [{"role": "user", "content": "Hello"}], "max_tokens": 5}
-        resp = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
-        self.log_result("OpenAI Chat Generative", resp.status_code, resp)
+        ok, resp = await self._safe_post(
+            svc, "https://api.openai.com/v1/chat/completions", headers=headers, json_body=payload
+        )
+        if ok and resp:
+            self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-        # 3. DALL-E Image Generation
-        img_payload = {"model": "dall-e-2", "prompt": "a white siamese cat", "n": 1, "size": "256x256"}
-        resp = requests.post("https://api.openai.com/v1/images/generations", headers=headers, json=img_payload)
-        self.log_result("OpenAI DALL-E Images", resp.status_code, resp)
+    async def _check_dalle(self, headers: Dict[str, str]) -> None:
+        """Check OpenAI DALL-E image generation access."""
+        svc = "OpenAI DALL-E Images"
+        payload = {"model": "dall-e-2", "prompt": "a white siamese cat", "n": 1, "size": "256x256"}
+        ok, resp = await self._safe_post(
+            svc, "https://api.openai.com/v1/images/generations", headers=headers, json_body=payload
+        )
+        if ok and resp:
+            self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-        # 4. Uploaded Files (Data Exfiltration Risk)
-        resp = requests.get("https://api.openai.com/v1/files", headers=headers)
-        self.log_result("OpenAI Uploaded Files", resp.status_code, resp)
+    async def _check_files(self, headers: Dict[str, str]) -> None:
+        """Check OpenAI uploaded files listing — data exfiltration risk."""
+        svc = "OpenAI Uploaded Files"
+        ok, resp = await self._safe_get(svc, "https://api.openai.com/v1/files", headers=headers)
+        if ok and resp:
+            self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-        # 5. Fine-Tuning Jobs (Intellectual Property Risk)
-        resp = requests.get("https://api.openai.com/v1/fine_tuning/jobs", headers=headers)
-        self.log_result("OpenAI Fine-Tuning Jobs", resp.status_code, resp)
+    async def _check_fine_tuning(self, headers: Dict[str, str]) -> None:
+        """Check OpenAI fine-tuning jobs — intellectual property risk."""
+        svc = "OpenAI Fine-Tuning Jobs"
+        ok, resp = await self._safe_get(svc, "https://api.openai.com/v1/fine_tuning/jobs", headers=headers)
+        if ok and resp:
+            self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-        # 6. Assistants API (Custom GPTs / Logic Exposure)
-        resp = requests.get("https://api.openai.com/v1/assistants", headers=beta_headers)
-        self.log_result("OpenAI Assistants", resp.status_code, resp)
+    async def _check_assistants(self, headers: Dict[str, str]) -> None:
+        """Check OpenAI Assistants API — custom GPT logic exposure."""
+        svc = "OpenAI Assistants"
+        ok, resp = await self._safe_get(svc, "https://api.openai.com/v1/assistants", headers=headers)
+        if ok and resp:
+            self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-        # 7. Vector Stores (RAG Knowledge Base Exposure)
-        resp = requests.get("https://api.openai.com/v1/vector_stores", headers=beta_headers)
-        self.log_result("OpenAI Vector Stores", resp.status_code, resp)
+    async def _check_vector_stores(self, headers: Dict[str, str]) -> None:
+        """Check OpenAI Vector Stores — RAG knowledge base exposure."""
+        svc = "OpenAI Vector Stores"
+        ok, resp = await self._safe_get(svc, "https://api.openai.com/v1/vector_stores", headers=headers)
+        if ok and resp:
+            self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-        # 8. Batches API
-        resp = requests.get("https://api.openai.com/v1/batches", headers=headers)
-        self.log_result("OpenAI Batches", resp.status_code, resp)
+    async def _check_batches(self, headers: Dict[str, str]) -> None:
+        """Check OpenAI Batches API access."""
+        svc = "OpenAI Batches"
+        ok, resp = await self._safe_get(svc, "https://api.openai.com/v1/batches", headers=headers)
+        if ok and resp:
+            self.log_result(svc, resp.status, resp, severity=Severity.MEDIUM)
 
-        # 9. Moderations API
-        mod_payload = {"input": "I want to kill them."}
-        resp = requests.post("https://api.openai.com/v1/moderations", headers=headers, json=mod_payload)
-        self.log_result("OpenAI Moderations", resp.status_code, resp)
+    async def _check_moderations(self, headers: Dict[str, str]) -> None:
+        """Check OpenAI Moderations API access."""
+        svc = "OpenAI Moderations"
+        payload = {"input": "I want to kill them."}
+        ok, resp = await self._safe_post(
+            svc, "https://api.openai.com/v1/moderations", headers=headers, json_body=payload
+        )
+        if ok and resp:
+            self.log_result(svc, resp.status, resp, severity=Severity.LOW)

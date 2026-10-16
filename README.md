@@ -1,96 +1,130 @@
-# APIKey Security Recon (apiKeyScan)
+# apiKeyScan — Universal API Security Recon
 
-**apiKeyScan** is an extremely lightweight, highly modular API Security Reconnaissance tool designed to quickly analyze the risk impact of leaked API Keys, access tokens, and cloud credentials. 
-
-Instead of bloated frameworks, apiKeyScan focuses purely on critical endpoint validation across major cloud providers (Google Cloud, Azure, AWS, and OpenAI). It checks if an exposed key can be used to exfiltrate data, consume massive billing quotas, manipulate authentication services, or even move laterally through obscure CI/CD infrastructure.
+**apiKeyScan** is a comprehensive, async, multi-provider API key security reconnaissance tool. It checks if exposed API keys can be used to exfiltrate data, consume billing quotas, manipulate authentication services, or move laterally through cloud infrastructure.
 
 ---
 
-## 🚀 Features
-- **Extensive Service Coverage**:
-  - **Google Workspace & GCP (21 Checks)**: Covers critical infrastructure like GCS Buckets, Firebase Realtime DB, Firestore, Identity Toolkit, Maps Suite, and modern FCM HTTP v1. **Also hunts obscure services** like Google Secret Manager, Cloud KMS, Cloud Build, and Cloud SQL.
-  - **Azure Cognitive & Cloud**: Validates Bing Search, Text Analytics, Face API, Translator, and Maps.
-  - **AWS (Boto3 integration)**: Confirms administrative privileges via `GetCallerIdentity`, `ListBuckets`, `GetUser`, and `DescribeInstances`. **Also hunts lateral movement** via SES (Email Spamming), SNS, SQS, and Route53 (DNS Hijacking).
-  - **OpenAI**: Verifies models and chat completions for quota exhaustion testing on leaked ChatGPT keys.
+## Features
+
+- **14 Providers**: Google Cloud, Azure, OpenAI, AWS, GitHub, Anthropic, HuggingFace, Stripe, Twilio, Slack, Discord, SendGrid, GitLab, DigitalOcean
+- **Async + Concurrent**: All HTTP checks run concurrently via `asyncio` + `aiohttp`
+- **Severity Ratings**: CRITICAL / HIGH / MEDIUM / LOW / INFO per finding
+- **5 Report Formats**: Console, JSON, HTML (with dashboard), CSV, SARIF 2.1.0
+- **Key Auto-Detection**: Regex + network probe-based provider identification
+- **Plugin Auto-Discovery**: Scanners loaded dynamically — just drop in a new file
+- **CI/CD Ready**: Exit codes (0=clean, 1=vulnerable, 2=error), SARIF for GitHub Code Scanning
+- **Batch Scanning**: Scan multiple keys from a file
+- **Key Extraction**: Scan codebases for leaked keys
+- **Notifications**: Slack & Discord webhook alerts
 
 ---
 
-## 🛠 Installation
+## Installation
 
 Requires **Python 3.8+**.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/qyzan/apiKeyScan.git
-   cd apiKeyScan
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-*(Note: `boto3` is officially required for AWS scanning. If you do not plan to scan AWS, the tool will gracefully skip the import crash).*
+Or install as a package:
+```bash
+pip install -e .
+```
 
 ---
 
-## 💻 Usage
+## Usage
 
-### Interactive Mode (Recommended)
-Simply execute the script without any arguments to trigger the automated wizard:
+### Scan a single key (auto-detect provider)
 ```bash
-python apiKeyScan.py
+python apiKeyScan.py scan -k AIzaSy...
 ```
 
-### CLI Automation Mode
-Ideal for CI/CD pipelines, bash loops, or mass-scanning tasks. If any dependent variable is missing, the script will interactively ask for it.
-
-**1. Google API Scan with HTML Report**
+### Scan with explicit provider and all report formats
 ```bash
-python apiKeyScan.py --provider google --key AIzaSyABCD1234EFGH5678IJKL --html
+python apiKeyScan.py scan -p github -k ghp_xxxx --all-formats
 ```
 
-**2. OpenAI Quota Check with JSON logging**
+### Batch scan from file
 ```bash
-python apiKeyScan.py -p openai -k sk-proj-1234abcd5678efgh --json
+python apiKeyScan.py scan --keyfile keys.txt --html --sarif
 ```
 
-**3. AWS Credential Check (Requires Secret Key)**
+### AWS credentials (requires secret key)
 ```bash
-python apiKeyScan.py -p aws -k AKIAXXXXXX --secret YYYYYYYYYYYYYYYY --html
+python apiKeyScan.py scan -p aws -k AKIAXXXXXX --secret YYYYYYYY --all-formats
 ```
 
-### Advanced Flags
-- `--project-id [ID]` : Specify GCP Project ID (enhances Firebase/Firestore/Secrets checking).
-- `--referer [URL]` : Spoof the HTTP Referer header to bypass poorly configured restrictions.
-- `--collection [NAME]` : Specify custom Firestore collection name to query (default: `users`).
-- `--bucket [NAME]` : Specify a target GCS Bucket (default falls back to project-id).
+### Extract keys from a codebase
+```bash
+python apiKeyScan.py extract ./repo/ --scan
+```
+
+### List available checks
+```bash
+python apiKeyScan.py list-checks --provider google
+```
+
+### With notifications
+```bash
+python apiKeyScan.py scan -p stripe -k sk_live_... --notify-slack $URL
+```
+
+### Config preset
+```bash
+python apiKeyScan.py scan --config preset.yaml
+```
+
+### Docker
+```bash
+docker-compose run apikeyscan scan -p google -k AIzaSy...
+```
 
 ---
 
-## 📁 Architecture / Writing Plugins
+## Exit Codes (CI/CD)
 
-The system is highly modularized via an OOP `BaseScanner` interface.
+| Code | Meaning |
+|------|---------|
+| 0    | No vulnerabilities found |
+| 1    | At least one VULNERABLE finding |
+| 2    | Scan error (invalid key, connection failure) |
+
+---
+
+## Architecture
 
 ```text
 apiKeyScan/
-├── apiKeyScan.py                 # The lightweight entry router
+├── apiKeyScan.py              # Async entry point with subcommands
 ├── core/
-│   ├── base_scanner.py        # Abstract Inheritance Class & HTTP Classifiers
-│   └── report_engine.py       # Handles console coloring, JSON, and HTML exports
+│   ├── base_scanner.py        # Async BaseScanner + aiohttp + severity
+│   ├── report_engine.py       # Console + JSON + HTML + CSV + SARIF
+│   ├── key_detector.py        # Regex + probe auto-detection
+│   ├── notifier.py            # Slack/Discord webhooks
+│   └── plugin_loader.py       # Dynamic scanner discovery
 └── scanners/
-    ├── google_scanner.py      # Google Cloud & Workspace Logic
-    ├── azure_scanner.py       
-    ├── openai_scanner.py      
-    └── aws_scanner.py         
+    ├── google_scanner.py      # 24 checks
+    ├── azure_scanner.py       # 5 checks
+    ├── openai_scanner.py      # 9 checks
+    ├── aws_scanner.py         # 9 checks (boto3 via to_thread)
+    ├── github_scanner.py      # 9 checks
+    ├── anthropic_scanner.py   # 3 checks
+    ├── huggingface_scanner.py # 5 checks
+    ├── stripe_scanner.py      # 7 checks
+    ├── twilio_scanner.py      # 5 checks
+    ├── slack_scanner.py       # 5 checks
+    ├── discord_scanner.py     # 3 checks
+    ├── sendgrid_scanner.py    # 5 checks
+    ├── gitlab_scanner.py      # 5 checks
+    └── digitalocean_scanner.py# 7 checks
 ```
 
-To create a new scanner (e.g., `github_scanner.py`), simply inherit from `BaseScanner`, construct your queries, and call `self.log_result("Service Name", response.status_code, response)`. The core engine handles colorization, false-positives, and JSON/HTML extraction automatically.
+To add a new scanner, create a `scanners/<provider>_scanner.py` file with a class inheriting from `BaseScanner`. Define `PROVIDER_NAME` and `CHECKS` class attributes, implement `async def scan()`. The plugin loader discovers it automatically.
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 **Educational and Authorized Security Use Only.**
-The author(s) of this project are not responsible for any misuse or damage caused by this tool. Never use this tool against infrastructure you do not have explicit, documented permission to test. Always adhere to responsible disclosure guidelines when dealing with compromised credentials.
-

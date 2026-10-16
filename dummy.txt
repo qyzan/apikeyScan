@@ -1,9 +1,0 @@
-import sys
-from colorama import Fore, Style, init
-from core.report_engine import ReportEngine
-from scanners import GoogleScanner, AzureScanner, OpenAIScanner, AWSScanner
-import argparse
-
-init(autoreset=True)
-
-# Just assuring apiScan is correct

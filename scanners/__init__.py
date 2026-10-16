@@ -1,6 +1,5 @@
-from .google_scanner import GoogleScanner
-from .azure_scanner import AzureScanner
-from .openai_scanner import OpenAIScanner
-from .aws_scanner import AWSScanner
+"""Scanners package — auto-discovered by core.plugin_loader.
 
-__all__ = ['GoogleScanner', 'AzureScanner', 'OpenAIScanner', 'AWSScanner']
+No manual imports needed. Scanner classes are discovered dynamically
+from any *_scanner.py module in this directory.
+"""

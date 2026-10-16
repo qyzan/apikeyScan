@@ -11,4 +11,23 @@ __pycache__/
 # Reports
 pentest_*_report.json
 pentest_*_report.html
+pentest_*_report.csv
+pentest_*_report.sarif
 *.log
+
+# Archives
+*.zip
+
+# Virtual environments
+.venv/
+venv/
+
+# CodeArts
+.codeartsdoer/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/

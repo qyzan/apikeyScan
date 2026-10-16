@@ -1,0 +1,14 @@
+# apiKeyScan configuration preset
+# Usage: python apiKeyScan.py scan --config config.example.yaml
+
+provider: google
+key: AIzaSyExampleKeyHere
+project_id: my-project-123
+output: my_scan_report
+formats:
+  - json
+  - html
+  - sarif
+timeout: 30
+rate_limit: 10
+notify_slack: https://hooks.slack.com/services/EXAMPLE
