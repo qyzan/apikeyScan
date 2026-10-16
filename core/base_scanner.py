@@ -10,7 +10,7 @@ import base64
 import json
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar
 
 import aiohttp
 from colorama import Fore, Style
@@ -36,7 +36,7 @@ class Severity(Enum):
         return str(self.value[1])
 
 
-SEVERITY_ORDER: Dict[str, int] = {
+SEVERITY_ORDER: dict[str, int] = {
     "CRITICAL": 0,
     "HIGH": 1,
     "MEDIUM": 2,
@@ -55,7 +55,7 @@ class ResponseData:
     """
 
     status: int
-    headers: Dict[str, str]
+    headers: dict[str, str]
     url: str
     _body_bytes: bytes
     _content_type: str = ""
@@ -93,16 +93,16 @@ class BaseScanner:
     """
 
     PROVIDER_NAME: str = "base"
-    CHECKS: ClassVar[List[str]] = []
+    CHECKS: ClassVar[list[str]] = []
 
     def __init__(
         self,
         api_key: str,
         timeout: int = 20,
         max_retries: int = 3,
-        rate_limit: Optional[int] = None,
-        proxy: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        rate_limit: int | None = None,
+        proxy: str | None = None,
+        user_agent: str | None = None,
         no_color: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -119,17 +119,17 @@ class BaseScanner:
             **kwargs: Additional provider-specific options.
         """
         self.api_key = api_key
-        self.results: List[Dict[str, Any]] = []
-        self.raw_data: List[Dict[str, Any]] = []
+        self.results: list[dict[str, Any]] = []
+        self.raw_data: list[dict[str, Any]] = []
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.max_retries = max_retries
         self.rate_limit = rate_limit
         self.proxy = proxy
         self.user_agent = user_agent
         self.no_color = no_color
-        self._session: Optional[aiohttp.ClientSession] = None
-        self._semaphore: Optional[asyncio.Semaphore] = None
-        self._extra: Dict[str, Any] = kwargs
+        self._session: aiohttp.ClientSession | None = None
+        self._semaphore: asyncio.Semaphore | None = None
+        self._extra: dict[str, Any] = kwargs
 
     def _c(self, color: str) -> str:
         """Return color code or empty string if --no-color is set.
@@ -146,10 +146,10 @@ class BaseScanner:
         self,
         method: str,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
-        json_body: Optional[Any] = None,
-        params: Optional[Dict[str, str]] = None,
-    ) -> Optional[ResponseData]:
+        headers: dict[str, str] | None = None,
+        json_body: Any | None = None,
+        params: dict[str, str] | None = None,
+    ) -> ResponseData | None:
         """Execute an HTTP request with retry and exponential backoff.
 
         Retries on 429 (Too Many Requests) and 503 (Service Unavailable)
@@ -171,7 +171,7 @@ class BaseScanner:
         if self._session is None:
             raise RuntimeError("No active aiohttp session. Call run() first.")
 
-        kwargs: Dict[str, Any] = {"timeout": self.timeout}
+        kwargs: dict[str, Any] = {"timeout": self.timeout}
         if headers:
             kwargs["headers"] = headers
         if json_body is not None:
@@ -207,9 +207,9 @@ class BaseScanner:
         self,
         service_name: str,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
-        params: Optional[Dict[str, str]] = None,
-    ) -> Tuple[bool, Optional[ResponseData]]:
+        headers: dict[str, str] | None = None,
+        params: dict[str, str] | None = None,
+    ) -> tuple[bool, ResponseData | None]:
         """Perform an async GET request with retry, timeout, and error handling.
 
         Args:
@@ -242,10 +242,10 @@ class BaseScanner:
         self,
         service_name: str,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
-        json_body: Optional[Any] = None,
-        params: Optional[Dict[str, str]] = None,
-    ) -> Tuple[bool, Optional[ResponseData]]:
+        headers: dict[str, str] | None = None,
+        json_body: Any | None = None,
+        params: dict[str, str] | None = None,
+    ) -> tuple[bool, ResponseData | None]:
         """Perform an async POST request with retry, timeout, and error handling.
 
         Args:
@@ -299,7 +299,7 @@ class BaseScanner:
             return Severity.MEDIUM
         return Severity.LOW
 
-    def _classify_status(self, status_code: int, full_body: Any) -> Tuple[str, str]:
+    def _classify_status(self, status_code: int, full_body: Any) -> tuple[str, str]:
         """Classify an HTTP status code into a human-readable status text and color.
 
         Args:
@@ -366,7 +366,7 @@ class BaseScanner:
         service_name: str,
         status_code: int,
         response_obj: ResponseData,
-        severity: Optional[Severity] = None,
+        severity: Severity | None = None,
     ) -> None:
         """Log a scan result with auto-severity detection if not specified.
 
@@ -447,11 +447,11 @@ class BaseScanner:
         self,
         service_name: str,
         status_text: str,
-        status_code: Optional[int],
+        status_code: int | None,
         response_body: Any,
         url: str = "N/A",
         severity: Severity = Severity.INFO,
-        color: Optional[str] = None,
+        color: str | None = None,
     ) -> None:
         """Log a custom result (e.g., for boto3-based scanners that don't use HTTP).
 
@@ -506,7 +506,7 @@ class BaseScanner:
                 return await check_coro
         return await check_coro
 
-    async def _run_checks(self, checks: List[Any]) -> List[Any]:
+    async def _run_checks(self, checks: list[Any]) -> list[Any]:
         """Run a list of check coroutines concurrently with optional rate limiting.
 
         Args:
@@ -534,8 +534,8 @@ class BaseScanner:
         This method manages the aiohttp.ClientSession lifecycle. Subclasses
         override scan(), not run().
         """
-        connector_kwargs: Dict[str, Any] = {}
-        headers: Dict[str, str] = {}
+        connector_kwargs: dict[str, Any] = {}
+        headers: dict[str, str] = {}
         if self.user_agent:
             headers["User-Agent"] = self.user_agent
 

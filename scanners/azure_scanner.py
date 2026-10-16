@@ -4,7 +4,7 @@ Validates Azure Maps, Translator, Bing Search, Face API, and Text Analytics
 using subscription-key based authentication.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -61,7 +61,7 @@ class AzureScanner(BaseScanner):
         """Check Azure Translator Text API access."""
         svc = "Azure Translator API"
         url = "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=es"
-        headers: Dict[str, str] = {"Ocp-Apim-Subscription-Key": self.api_key, "Content-Type": "application/json"}
+        headers: dict[str, str] = {"Ocp-Apim-Subscription-Key": self.api_key, "Content-Type": "application/json"}
         payload = [{"Text": "Hello API test"}]
         ok, resp = await self._safe_post(svc, url, headers=headers, json_body=payload)
         if ok and resp:

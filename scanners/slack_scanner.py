@@ -4,7 +4,7 @@ Validates auth test, channels, users, team info, and files listing
 using Bearer token authentication.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -39,7 +39,7 @@ class SlackScanner(BaseScanner):
         """Run all Slack API reconnaissance checks concurrently."""
         print(f"\n{self._c(Fore.CYAN)}=== SLACK API RECON ==={Style.RESET_ALL}\n")
 
-        headers: Dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
+        headers: dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
 
         checks = [
             self._check_auth_test(headers),
@@ -50,35 +50,35 @@ class SlackScanner(BaseScanner):
         ]
         await self._run_checks(checks)
 
-    async def _check_auth_test(self, headers: Dict[str, str]) -> None:
+    async def _check_auth_test(self, headers: dict[str, str]) -> None:
         """Check auth test — auth validation and workspace info."""
         svc = "Slack Auth Test"
         ok, resp = await self._safe_get(svc, "https://slack.com/api/auth.test", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.LOW)
 
-    async def _check_conversations(self, headers: Dict[str, str]) -> None:
+    async def _check_conversations(self, headers: dict[str, str]) -> None:
         """Check conversations listing — channel access."""
         svc = "Slack Channels List"
         ok, resp = await self._safe_get(svc, "https://slack.com/api/conversations.list", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_users(self, headers: Dict[str, str]) -> None:
+    async def _check_users(self, headers: dict[str, str]) -> None:
         """Check users listing — member enumeration."""
         svc = "Slack Users List"
         ok, resp = await self._safe_get(svc, "https://slack.com/api/users.list", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_team_info(self, headers: Dict[str, str]) -> None:
+    async def _check_team_info(self, headers: dict[str, str]) -> None:
         """Check team info — workspace details."""
         svc = "Slack Team Info"
         ok, resp = await self._safe_get(svc, "https://slack.com/api/team.info", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.MEDIUM)
 
-    async def _check_files(self, headers: Dict[str, str]) -> None:
+    async def _check_files(self, headers: dict[str, str]) -> None:
         """Check files listing — file access."""
         svc = "Slack Files List"
         ok, resp = await self._safe_get(svc, "https://slack.com/api/files.list", headers=headers)

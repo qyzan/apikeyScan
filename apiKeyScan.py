@@ -16,7 +16,7 @@ Usage:
 import argparse
 import asyncio
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from colorama import Fore, Style, init
 
@@ -98,7 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def load_config(config_path: str) -> Dict[str, Any]:
+def load_config(config_path: str) -> dict[str, Any]:
     """Load a YAML config file.
 
     Args:
@@ -120,7 +120,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
         return {}
 
 
-def build_scanner_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
+def build_scanner_kwargs(args: argparse.Namespace) -> dict[str, Any]:
     """Build scanner constructor kwargs from CLI args.
 
     Args:
@@ -129,7 +129,7 @@ def build_scanner_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
     Returns:
         Dict of kwargs for scanner construction.
     """
-    kwargs: Dict[str, Any] = {
+    kwargs: dict[str, Any] = {
         "timeout": args.timeout,
         "no_color": args.no_color,
     }
@@ -157,9 +157,9 @@ def build_scanner_kwargs(args: argparse.Namespace) -> Dict[str, Any]:
 async def run_single_scan(
     provider: str,
     api_key: str,
-    kwargs: Dict[str, Any],
+    kwargs: dict[str, Any],
     args: argparse.Namespace,
-) -> Optional[Any]:
+) -> Any | None:
     """Run a single provider scan and generate reports.
 
     Args:
@@ -212,7 +212,7 @@ async def run_scan_command(args: argparse.Namespace) -> int:
     Returns:
         Exit code: 0=clean, 1=vulnerable found, 2=error.
     """
-    config_data: Dict[str, Any] = {}
+    config_data: dict[str, Any] = {}
     if args.config:
         config_data = load_config(args.config)
 
@@ -226,7 +226,7 @@ async def run_scan_command(args: argparse.Namespace) -> int:
 
     kwargs = build_scanner_kwargs(args)
 
-    scanners: List[Any] = []
+    scanners: list[Any] = []
     has_error = False
 
     if keyfile:

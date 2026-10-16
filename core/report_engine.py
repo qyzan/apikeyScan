@@ -8,7 +8,7 @@ import csv
 import html as html_lib
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -50,7 +50,7 @@ class ReportEngine:
         print(f"{Fore.CYAN}{'=' * 70}{Style.RESET_ALL}\n")
 
     @staticmethod
-    def generate_json_report(scanner: Any, provider_name: str, filename: Optional[str] = None) -> str:
+    def generate_json_report(scanner: Any, provider_name: str, filename: str | None = None) -> str:
         """Generate a JSON report file with scan metadata and raw responses.
 
         Args:
@@ -87,7 +87,7 @@ class ReportEngine:
         return filename
 
     @staticmethod
-    def generate_csv_report(scanner: Any, provider_name: str, filename: Optional[str] = None) -> str:
+    def generate_csv_report(scanner: Any, provider_name: str, filename: str | None = None) -> str:
         """Generate a CSV report file with one row per check.
 
         Args:
@@ -121,7 +121,7 @@ class ReportEngine:
         return filename
 
     @staticmethod
-    def generate_sarif_report(scanner: Any, provider_name: str, filename: Optional[str] = None) -> str:
+    def generate_sarif_report(scanner: Any, provider_name: str, filename: str | None = None) -> str:
         """Generate a SARIF 2.1.0 report for GitHub Code Scanning integration.
 
         Args:
@@ -135,7 +135,7 @@ class ReportEngine:
         if not filename:
             filename = f"pentest_{provider_name}_report.sarif"
 
-        sarif: Dict[str, Any] = {
+        sarif: dict[str, Any] = {
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
             "version": "2.1.0",
             "runs": [
@@ -154,7 +154,7 @@ class ReportEngine:
                                 }
                             ],
                         }
-                        for res, raw in zip(scanner.results, scanner.raw_data)
+                        for res, raw in zip(scanner.results, scanner.raw_data, strict=False)
                     ],
                 }
             ],
@@ -166,7 +166,7 @@ class ReportEngine:
         return filename
 
     @staticmethod
-    def generate_html_report(scanner: Any, provider_name: str, filename: Optional[str] = None) -> str:
+    def generate_html_report(scanner: Any, provider_name: str, filename: str | None = None) -> str:
         """Generate an HTML report with summary dashboard and severity badges.
 
         Args:
@@ -186,7 +186,7 @@ class ReportEngine:
         errors = sum(1 for r in scanner.results if "ERROR" in r["status_text"])
         sum(1 for r in scanner.results if "UNAUTHORIZED" in r["status_text"])
 
-        sev_counts: Dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
+        sev_counts: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
         for r in scanner.results:
             sev = r.get("severity", "INFO")
             sev_counts[sev] = sev_counts.get(sev, 0) + 1
@@ -330,7 +330,7 @@ class ReportEngine:
                 body_pretty = f'<br/><img src="{raw_body}" alt="API Image Response" style="max-width: 100%; border: 1px solid #444; border-radius: 5px;" />'
             else:
                 body_str = (
-                    json.dumps(raw_body, indent=2, default=str) if isinstance(raw_body, (dict, list)) else str(raw_body)
+                    json.dumps(raw_body, indent=2, default=str) if isinstance(raw_body, dict | list) else str(raw_body)
                 )
                 body_pretty = f"<pre>{html_lib.escape(body_str)}</pre>"
 
@@ -365,7 +365,7 @@ class ReportEngine:
         return filename
 
     @staticmethod
-    def generate_all_reports(scanner: Any, provider_name: str, output_prefix: Optional[str] = None) -> List[str]:
+    def generate_all_reports(scanner: Any, provider_name: str, output_prefix: str | None = None) -> list[str]:
         """Generate reports in all available formats.
 
         Args:
@@ -377,7 +377,7 @@ class ReportEngine:
             List of generated filenames.
         """
         prefix = output_prefix or f"pentest_{provider_name}_report"
-        files: List[str] = []
+        files: list[str] = []
         files.append(ReportEngine.generate_json_report(scanner, provider_name, f"{prefix}.json"))
         files.append(ReportEngine.generate_html_report(scanner, provider_name, f"{prefix}.html"))
         files.append(ReportEngine.generate_csv_report(scanner, provider_name, f"{prefix}.csv"))

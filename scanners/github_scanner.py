@@ -4,7 +4,7 @@ Checks repo access, org access, gists, SSH keys, Actions secrets,
 packages, starred repos, notifications, and token scope enumeration.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -44,7 +44,7 @@ class GitHubScanner(BaseScanner):
         """Run all GitHub API reconnaissance checks concurrently."""
         print(f"\n{self._c(Fore.CYAN)}=== GITHUB API RECON ==={Style.RESET_ALL}\n")
 
-        headers: Dict[str, str] = {
+        headers: dict[str, str] = {
             "Authorization": f"Bearer {self.api_key}",
             "Accept": "application/vnd.github+json",
         }
@@ -62,7 +62,7 @@ class GitHubScanner(BaseScanner):
         ]
         await self._run_checks(checks)
 
-    async def _check_user_profile(self, headers: Dict[str, str]) -> None:
+    async def _check_user_profile(self, headers: dict[str, str]) -> None:
         """Check user profile endpoint for auth validation and scope detection."""
         svc = "GitHub User Profile"
         ok, resp = await self._safe_get(svc, "https://api.github.com/user", headers=headers)
@@ -70,56 +70,56 @@ class GitHubScanner(BaseScanner):
             scopes = resp.headers.get("X-OAuth-Scopes", "none")
             self.log_result(f"{svc} (scopes: {scopes})", resp.status, resp, severity=Severity.LOW)
 
-    async def _check_repos(self, headers: Dict[str, str]) -> None:
+    async def _check_repos(self, headers: dict[str, str]) -> None:
         """Check repository listing access."""
         svc = "GitHub Repos List"
         ok, resp = await self._safe_get(svc, "https://api.github.com/user/repos?per_page=100", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_orgs(self, headers: Dict[str, str]) -> None:
+    async def _check_orgs(self, headers: dict[str, str]) -> None:
         """Check organization membership access."""
         svc = "GitHub Organizations"
         ok, resp = await self._safe_get(svc, "https://api.github.com/user/orgs", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_gists(self, headers: Dict[str, str]) -> None:
+    async def _check_gists(self, headers: dict[str, str]) -> None:
         """Check gist listing — code snippet exfiltration risk."""
         svc = "GitHub Gists"
         ok, resp = await self._safe_get(svc, "https://api.github.com/gists", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_ssh_keys(self, headers: Dict[str, str]) -> None:
+    async def _check_ssh_keys(self, headers: dict[str, str]) -> None:
         """Check SSH key listing — key exposure risk."""
         svc = "GitHub SSH Keys"
         ok, resp = await self._safe_get(svc, "https://api.github.com/user/keys", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_packages(self, headers: Dict[str, str]) -> None:
+    async def _check_packages(self, headers: dict[str, str]) -> None:
         """Check package registry access."""
         svc = "GitHub Packages"
         ok, resp = await self._safe_get(svc, "https://api.github.com/user/packages", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.MEDIUM)
 
-    async def _check_starred(self, headers: Dict[str, str]) -> None:
+    async def _check_starred(self, headers: dict[str, str]) -> None:
         """Check starred repos — activity intelligence."""
         svc = "GitHub Starred Repos"
         ok, resp = await self._safe_get(svc, "https://api.github.com/user/starred", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.LOW)
 
-    async def _check_notifications(self, headers: Dict[str, str]) -> None:
+    async def _check_notifications(self, headers: dict[str, str]) -> None:
         """Check notifications — account activity access."""
         svc = "GitHub Notifications"
         ok, resp = await self._safe_get(svc, "https://api.github.com/notifications", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.MEDIUM)
 
-    async def _check_rate_limit(self, headers: Dict[str, str]) -> None:
+    async def _check_rate_limit(self, headers: dict[str, str]) -> None:
         """Check rate limit — confirms valid token."""
         svc = "GitHub Rate Limit"
         ok, resp = await self._safe_get(svc, "https://api.github.com/rate_limit", headers=headers)

@@ -4,7 +4,7 @@ Validates user, projects, groups, SSH keys, and personal access tokens
 using PRIVATE-TOKEN header authentication.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -39,7 +39,7 @@ class GitLabScanner(BaseScanner):
         """Run all GitLab API reconnaissance checks concurrently."""
         print(f"\n{self._c(Fore.CYAN)}=== GITLAB API RECON ==={Style.RESET_ALL}\n")
 
-        headers: Dict[str, str] = {"PRIVATE-TOKEN": self.api_key}
+        headers: dict[str, str] = {"PRIVATE-TOKEN": self.api_key}
 
         checks = [
             self._check_user(headers),
@@ -50,35 +50,35 @@ class GitLabScanner(BaseScanner):
         ]
         await self._run_checks(checks)
 
-    async def _check_user(self, headers: Dict[str, str]) -> None:
+    async def _check_user(self, headers: dict[str, str]) -> None:
         """Check user endpoint — auth validation."""
         svc = "GitLab User"
         ok, resp = await self._safe_get(svc, "https://gitlab.com/api/v4/user", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.LOW)
 
-    async def _check_projects(self, headers: Dict[str, str]) -> None:
+    async def _check_projects(self, headers: dict[str, str]) -> None:
         """Check projects listing — project access."""
         svc = "GitLab Projects"
         ok, resp = await self._safe_get(svc, "https://gitlab.com/api/v4/projects?membership=true", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_groups(self, headers: Dict[str, str]) -> None:
+    async def _check_groups(self, headers: dict[str, str]) -> None:
         """Check groups listing — group access."""
         svc = "GitLab Groups"
         ok, resp = await self._safe_get(svc, "https://gitlab.com/api/v4/groups", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_ssh_keys(self, headers: Dict[str, str]) -> None:
+    async def _check_ssh_keys(self, headers: dict[str, str]) -> None:
         """Check SSH keys — key exposure risk."""
         svc = "GitLab SSH Keys"
         ok, resp = await self._safe_get(svc, "https://gitlab.com/api/v4/user/keys", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_pats(self, headers: Dict[str, str]) -> None:
+    async def _check_pats(self, headers: dict[str, str]) -> None:
         """Check personal access tokens — token enumeration."""
         svc = "GitLab Personal Access Tokens"
         ok, resp = await self._safe_get(svc, "https://gitlab.com/api/v4/personal_access_tokens", headers=headers)

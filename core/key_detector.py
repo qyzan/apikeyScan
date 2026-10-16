@@ -9,7 +9,7 @@ import os
 import re
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 from colorama import Fore, Style
@@ -24,7 +24,7 @@ class DetectionConfidence(Enum):
     UNKNOWN = "unknown"
 
 
-KEY_PATTERNS: Dict[str, Dict[str, Any]] = {
+KEY_PATTERNS: dict[str, dict[str, Any]] = {
     "google": {
         "pattern": re.compile(r"^AIza[0-9A-Za-z_-]{35}$"),
         "description": "Google API Key (AIza...)",
@@ -83,7 +83,7 @@ KEY_PATTERNS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-EXTRACT_PATTERNS: Dict[str, re.Pattern] = {
+EXTRACT_PATTERNS: dict[str, re.Pattern] = {
     "google": re.compile(r"AIza[0-9A-Za-z_-]{35}"),
     "openai": re.compile(r"sk-(proj-)?[a-zA-Z0-9]{20,}"),
     "aws": re.compile(r"AKIA[0-9A-Z]{16}"),
@@ -100,7 +100,7 @@ EXTRACT_PATTERNS: Dict[str, re.Pattern] = {
     "digitalocean": re.compile(r"dop_v1_[a-f0-9]{64}"),
 }
 
-PROBE_ENDPOINTS: Dict[str, Dict[str, Any]] = {
+PROBE_ENDPOINTS: dict[str, dict[str, Any]] = {
     "google": {
         "url": "https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={key}",
         "method": "GET",
@@ -169,7 +169,7 @@ PROBE_ENDPOINTS: Dict[str, Dict[str, Any]] = {
 }
 
 
-def detect_by_regex(key: str) -> List[Dict[str, Any]]:
+def detect_by_regex(key: str) -> list[dict[str, Any]]:
     """Match a key against known regex patterns.
 
     Args:
@@ -179,7 +179,7 @@ def detect_by_regex(key: str) -> List[Dict[str, Any]]:
         List of candidate dicts with provider, confidence, method, description.
         May contain multiple entries for ambiguous keys.
     """
-    candidates: List[Dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
     for provider, info in KEY_PATTERNS.items():
         if info["pattern"].match(key):
             candidates.append(
@@ -193,7 +193,7 @@ def detect_by_regex(key: str) -> List[Dict[str, Any]]:
     return candidates
 
 
-def detect_provider(key: str) -> Optional[str]:
+def detect_provider(key: str) -> str | None:
     """Quick regex-only provider detection (no network).
 
     Args:
@@ -212,9 +212,9 @@ def detect_provider(key: str) -> Optional[str]:
 
 async def detect_by_probe(
     key: str,
-    candidates: Optional[List[str]] = None,
+    candidates: list[str] | None = None,
     timeout: int = 10,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Send lightweight probe requests to candidate providers.
 
     Args:
@@ -247,7 +247,7 @@ async def detect_by_probe(
     return None
 
 
-def interactive_confirm(key: str, candidates: List[Dict[str, Any]]) -> Dict[str, Any]:
+def interactive_confirm(key: str, candidates: list[dict[str, Any]]) -> dict[str, Any]:
     """Show candidates and let the user choose a provider interactively.
 
     Args:
@@ -280,7 +280,7 @@ async def auto_detect_provider(
     key: str,
     interactive: bool = True,
     force_probe: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Full auto-detection pipeline: regex → probe → interactive.
 
     Args:
@@ -307,7 +307,7 @@ async def auto_detect_provider(
     if result:
         return result
 
-    unknown_result: Dict[str, Any] = {
+    unknown_result: dict[str, Any] = {
         "provider": "unknown",
         "confidence": DetectionConfidence.UNKNOWN,
         "method": "failed",
@@ -318,7 +318,7 @@ async def auto_detect_provider(
     return unknown_result
 
 
-def extract_keys_from_directory(path: str) -> List[Dict[str, Any]]:
+def extract_keys_from_directory(path: str) -> list[dict[str, Any]]:
     """Scan all files in a directory tree for potential API keys.
 
     Args:
@@ -327,7 +327,7 @@ def extract_keys_from_directory(path: str) -> List[Dict[str, Any]]:
     Returns:
         List of found key dicts with provider, key, file, line.
     """
-    found: List[Dict[str, Any]] = []
+    found: list[dict[str, Any]] = []
     skip_dirs = {".git", "node_modules", "__pycache__", ".venv", "venv", ".codeartsdoer"}
 
     for root, dirs, files in os.walk(path):

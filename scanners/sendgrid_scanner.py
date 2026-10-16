@@ -5,7 +5,7 @@ authentication. Mail send is checked with an invalid payload to avoid
 actually sending emails.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -41,7 +41,7 @@ class SendGridScanner(BaseScanner):
         """Run all SendGrid API reconnaissance checks concurrently."""
         print(f"\n{self._c(Fore.CYAN)}=== SENDGRID API RECON ==={Style.RESET_ALL}\n")
 
-        headers: Dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
+        headers: dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
 
         checks = [
             self._check_api_keys(headers),
@@ -52,14 +52,14 @@ class SendGridScanner(BaseScanner):
         ]
         await self._run_checks(checks)
 
-    async def _check_api_keys(self, headers: Dict[str, str]) -> None:
+    async def _check_api_keys(self, headers: dict[str, str]) -> None:
         """Check API keys listing — auth validation and key enumeration."""
         svc = "SendGrid API Keys"
         ok, resp = await self._safe_get(svc, "https://api.sendgrid.com/v3/api_keys", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_mail_send(self, headers: Dict[str, str]) -> None:
+    async def _check_mail_send(self, headers: dict[str, str]) -> None:
         """Check mail send auth with invalid payload — no actual email sent."""
         svc = "SendGrid Mail Send (dry-run)"
         send_headers = {**headers, "Content-Type": "application/json"}
@@ -75,21 +75,21 @@ class SendGridScanner(BaseScanner):
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_suppressions(self, headers: Dict[str, str]) -> None:
+    async def _check_suppressions(self, headers: dict[str, str]) -> None:
         """Check suppressions — bounce list access."""
         svc = "SendGrid Suppressions"
         ok, resp = await self._safe_get(svc, "https://api.sendgrid.com/v3/suppressions/bounces", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.MEDIUM)
 
-    async def _check_templates(self, headers: Dict[str, str]) -> None:
+    async def _check_templates(self, headers: dict[str, str]) -> None:
         """Check templates — email template access."""
         svc = "SendGrid Templates"
         ok, resp = await self._safe_get(svc, "https://api.sendgrid.com/v3/templates", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.MEDIUM)
 
-    async def _check_stats(self, headers: Dict[str, str]) -> None:
+    async def _check_stats(self, headers: dict[str, str]) -> None:
         """Check stats — sending statistics access."""
         svc = "SendGrid Stats"
         ok, resp = await self._safe_get(

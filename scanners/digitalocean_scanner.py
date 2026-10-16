@@ -4,7 +4,7 @@ Validates account, droplets, spaces keys, SSH keys, databases,
 Kubernetes clusters, and firewalls using Bearer token authentication.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -42,7 +42,7 @@ class DigitalOceanScanner(BaseScanner):
         """Run all DigitalOcean API reconnaissance checks concurrently."""
         print(f"\n{self._c(Fore.CYAN)}=== DIGITALOCEAN API RECON ==={Style.RESET_ALL}\n")
 
-        headers: Dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
+        headers: dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
 
         checks = [
             self._check_account(headers),
@@ -55,49 +55,49 @@ class DigitalOceanScanner(BaseScanner):
         ]
         await self._run_checks(checks)
 
-    async def _check_account(self, headers: Dict[str, str]) -> None:
+    async def _check_account(self, headers: dict[str, str]) -> None:
         """Check account endpoint — auth validation."""
         svc = "DigitalOcean Account"
         ok, resp = await self._safe_get(svc, "https://api.digitalocean.com/v2/account", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.LOW)
 
-    async def _check_droplets(self, headers: Dict[str, str]) -> None:
+    async def _check_droplets(self, headers: dict[str, str]) -> None:
         """Check droplets listing — VPS instance access."""
         svc = "DigitalOcean Droplets"
         ok, resp = await self._safe_get(svc, "https://api.digitalocean.com/v2/droplets", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_spaces_keys(self, headers: Dict[str, str]) -> None:
+    async def _check_spaces_keys(self, headers: dict[str, str]) -> None:
         """Check spaces keys — S3-compatible storage key access."""
         svc = "DigitalOcean Spaces Keys"
         ok, resp = await self._safe_get(svc, "https://api.digitalocean.com/v2/spaces/keys", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_ssh_keys(self, headers: Dict[str, str]) -> None:
+    async def _check_ssh_keys(self, headers: dict[str, str]) -> None:
         """Check SSH keys — key exposure risk."""
         svc = "DigitalOcean SSH Keys"
         ok, resp = await self._safe_get(svc, "https://api.digitalocean.com/v2/account/keys", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_databases(self, headers: Dict[str, str]) -> None:
+    async def _check_databases(self, headers: dict[str, str]) -> None:
         """Check databases — managed database access."""
         svc = "DigitalOcean Databases"
         ok, resp = await self._safe_get(svc, "https://api.digitalocean.com/v2/databases", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_k8s_clusters(self, headers: Dict[str, str]) -> None:
+    async def _check_k8s_clusters(self, headers: dict[str, str]) -> None:
         """Check Kubernetes clusters — DOKS cluster access."""
         svc = "DigitalOcean Kubernetes Clusters"
         ok, resp = await self._safe_get(svc, "https://api.digitalocean.com/v2/kubernetes/clusters", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_firewalls(self, headers: Dict[str, str]) -> None:
+    async def _check_firewalls(self, headers: dict[str, str]) -> None:
         """Check firewalls — firewall rule access."""
         svc = "DigitalOcean Firewalls"
         ok, resp = await self._safe_get(svc, "https://api.digitalocean.com/v2/firewalls", headers=headers)

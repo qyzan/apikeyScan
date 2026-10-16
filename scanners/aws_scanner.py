@@ -7,7 +7,7 @@ privilege scope.
 """
 
 import asyncio
-from typing import Any, Dict, Optional
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -47,7 +47,7 @@ class AWSScanner(BaseScanner):
     def __init__(
         self,
         api_key: str,
-        aws_secret: Optional[str] = None,
+        aws_secret: str | None = None,
         region: str = "us-east-1",
         **kwargs: Any,
     ) -> None:
@@ -150,7 +150,7 @@ class AWSScanner(BaseScanner):
             color=self._c(Fore.GREEN),
         )
 
-        checks: Dict[str, Any] = {
+        checks: dict[str, Any] = {
             "AWS S3": ("ListBuckets", lambda: self._get_client("s3").list_buckets(), Severity.CRITICAL),
             "AWS IAM": ("GetUser", lambda: self._get_client("iam").get_user(), Severity.CRITICAL),
             "AWS EC2": ("DescribeInstances", lambda: self._get_client("ec2").describe_instances(), Severity.HIGH),

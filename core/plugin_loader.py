@@ -7,18 +7,18 @@ without requiring manual imports in __init__.py.
 import importlib
 import pkgutil
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 from core.base_scanner import BaseScanner
 
 
-def load_scanners() -> Dict[str, Type[BaseScanner]]:
+def load_scanners() -> dict[str, type[BaseScanner]]:
     """Dynamically discover and load all scanner classes from scanners/ dir.
 
     Returns:
         Dict mapping provider names to scanner classes.
     """
-    scanners: Dict[str, Type[BaseScanner]] = {}
+    scanners: dict[str, type[BaseScanner]] = {}
     scanners_dir = Path(__file__).parent.parent / "scanners"
 
     for _finder, name, _ in pkgutil.iter_modules([str(scanners_dir)]):
@@ -36,7 +36,7 @@ def load_scanners() -> Dict[str, Type[BaseScanner]]:
     return scanners
 
 
-def get_scanner_class(provider: str) -> Type[BaseScanner]:
+def get_scanner_class(provider: str) -> type[BaseScanner]:
     """Get a scanner class by provider name.
 
     Args:
@@ -73,7 +73,7 @@ def get_scanner(provider: str, api_key: str, **kwargs: Any) -> BaseScanner:
     return scanner_class(api_key, **kwargs)
 
 
-def list_providers() -> List[str]:
+def list_providers() -> list[str]:
     """List all available provider names.
 
     Returns:
@@ -82,7 +82,7 @@ def list_providers() -> List[str]:
     return sorted(load_scanners().keys())
 
 
-def list_checks(provider: Optional[str] = None) -> Dict[str, List[str]]:
+def list_checks(provider: str | None = None) -> dict[str, list[str]]:
     """List available checks for one or all providers.
 
     Args:

@@ -6,7 +6,7 @@ Safe Browsing, Drive, Places, Directions, Geocoding, Distance Matrix,
 FCM, Secret Manager, KMS, Cloud Build, Cloud SQL, and Gemini.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -52,11 +52,11 @@ class GoogleScanner(BaseScanner):
     def __init__(
         self,
         api_key: str,
-        project_id: Optional[str] = None,
-        referer: Optional[str] = None,
-        jwt: Optional[str] = None,
+        project_id: str | None = None,
+        referer: str | None = None,
+        jwt: str | None = None,
         collection_name: str = "users",
-        bucket_name: Optional[str] = None,
+        bucket_name: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the Google scanner.
@@ -74,7 +74,7 @@ class GoogleScanner(BaseScanner):
         self.project_id = project_id
         self.collection_name = collection_name
         self.bucket_name = bucket_name
-        self.headers: Dict[str, str] = {}
+        self.headers: dict[str, str] = {}
         if referer:
             self.headers["Referer"] = referer
         if jwt:
@@ -84,7 +84,7 @@ class GoogleScanner(BaseScanner):
         """Run all Google API reconnaissance checks concurrently."""
         print(f"\n{self._c(Fore.CYAN)}=== GOOGLE API RECON ==={Style.RESET_ALL}\n")
 
-        checks: List[Any] = [
+        checks: list[Any] = [
             self._check_identity_toolkit(),
             self._check_maps_static(),
             self._check_vision(),

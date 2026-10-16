@@ -5,7 +5,7 @@ using HTTP Basic authentication (Account SID + Auth Token or API Key).
 """
 
 import base64
-from typing import Any, Dict, Optional
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -31,8 +31,8 @@ class TwilioScanner(BaseScanner):
     def __init__(
         self,
         api_key: str,
-        account_sid: Optional[str] = None,
-        api_secret: Optional[str] = None,
+        account_sid: str | None = None,
+        api_secret: str | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the Twilio scanner.
@@ -47,7 +47,7 @@ class TwilioScanner(BaseScanner):
         self.account_sid = account_sid or api_key
         self.api_secret = api_secret or ""
 
-    def _get_auth_headers(self) -> Dict[str, str]:
+    def _get_auth_headers(self) -> dict[str, str]:
         """Build HTTP Basic auth headers for Twilio API.
 
         Returns:
@@ -73,35 +73,35 @@ class TwilioScanner(BaseScanner):
         ]
         await self._run_checks(checks)
 
-    async def _check_account(self, headers: Dict[str, str], base: str) -> None:
+    async def _check_account(self, headers: dict[str, str], base: str) -> None:
         """Check account endpoint — auth validation."""
         svc = "Twilio Account"
         ok, resp = await self._safe_get(svc, f"{base}.json", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.LOW)
 
-    async def _check_messages(self, headers: Dict[str, str], base: str) -> None:
+    async def _check_messages(self, headers: dict[str, str], base: str) -> None:
         """Check messages listing — SMS history access."""
         svc = "Twilio Messages List"
         ok, resp = await self._safe_get(svc, f"{base}/Messages.json?PageSize=1", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_calls(self, headers: Dict[str, str], base: str) -> None:
+    async def _check_calls(self, headers: dict[str, str], base: str) -> None:
         """Check calls listing — call history access."""
         svc = "Twilio Calls List"
         ok, resp = await self._safe_get(svc, f"{base}/Calls.json?PageSize=1", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_phone_numbers(self, headers: Dict[str, str], base: str) -> None:
+    async def _check_phone_numbers(self, headers: dict[str, str], base: str) -> None:
         """Check phone numbers — phone number inventory access."""
         svc = "Twilio Phone Numbers"
         ok, resp = await self._safe_get(svc, f"{base}/IncomingPhoneNumbers.json", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_usage(self, headers: Dict[str, str], base: str) -> None:
+    async def _check_usage(self, headers: dict[str, str], base: str) -> None:
         """Check usage records — billing usage access."""
         svc = "Twilio Usage Records"
         ok, resp = await self._safe_get(svc, f"{base}/Usage/Records.json", headers=headers)

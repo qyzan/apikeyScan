@@ -4,7 +4,7 @@ Validates user info, guilds (servers), and application info
 using Bot token authentication.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from colorama import Fore, Style
 
@@ -37,7 +37,7 @@ class DiscordScanner(BaseScanner):
         """Run all Discord API reconnaissance checks concurrently."""
         print(f"\n{self._c(Fore.CYAN)}=== DISCORD API RECON ==={Style.RESET_ALL}\n")
 
-        headers: Dict[str, str] = {"Authorization": f"Bot {self.api_key}"}
+        headers: dict[str, str] = {"Authorization": f"Bot {self.api_key}"}
 
         checks = [
             self._check_user(headers),
@@ -46,21 +46,21 @@ class DiscordScanner(BaseScanner):
         ]
         await self._run_checks(checks)
 
-    async def _check_user(self, headers: Dict[str, str]) -> None:
+    async def _check_user(self, headers: dict[str, str]) -> None:
         """Check user endpoint — auth validation and bot info."""
         svc = "Discord User"
         ok, resp = await self._safe_get(svc, "https://discord.com/api/v10/users/@me", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.LOW)
 
-    async def _check_guilds(self, headers: Dict[str, str]) -> None:
+    async def _check_guilds(self, headers: dict[str, str]) -> None:
         """Check guilds listing — server access."""
         svc = "Discord Guilds"
         ok, resp = await self._safe_get(svc, "https://discord.com/api/v10/users/@me/guilds", headers=headers)
         if ok and resp:
             self.log_result(svc, resp.status, resp, severity=Severity.HIGH)
 
-    async def _check_application(self, headers: Dict[str, str]) -> None:
+    async def _check_application(self, headers: dict[str, str]) -> None:
         """Check application info — app details and scopes."""
         svc = "Discord Application"
         ok, resp = await self._safe_get(svc, "https://discord.com/api/v10/oauth2/applications/@me", headers=headers)
