@@ -1,226 +1,260 @@
-# apiKeyScan — Universal API Security Recon
+<div align="center">
 
-**apiKeyScan** is a comprehensive, async, multi-provider API key security reconnaissance tool. It checks if exposed API keys can be used to exfiltrate data, consume billing quotas, manipulate authentication services, or move laterally through cloud infrastructure.
+# 🔐 apiKeyScan — Universal API Security Recon
 
----
+**Async multi-provider API key security reconnaissance.**
+Find out what an exposed key can *actually* do: exfiltrate data, burn billing quota,
+manipulate auth services, or move laterally through cloud infrastructure.
 
-## Features
+[![CI](https://github.com/qyzan/apikeyScan/actions/workflows/ci.yml/badge.svg)](https://github.com/qyzan/apikeyScan/actions/workflows/ci.yml)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![Ruff](https://img.shields.io/badge/ruff-0.8.4-orange)
+![Coverage](https://img.shields.io/badge/coverage-78%25-success)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-- **14 Providers**: Google Cloud, Azure, OpenAI, AWS, GitHub, Anthropic, HuggingFace, Stripe, Twilio, Slack, Discord, SendGrid, GitLab, DigitalOcean
-- **Async + Concurrent**: All HTTP checks run concurrently via `asyncio` + `aiohttp`
-- **Severity Ratings**: CRITICAL / ERROR / HIGH / MEDIUM / LOW / INFO per finding
-- **5 Report Formats**: Console, JSON, HTML (with dashboard), CSV, SARIF 2.1.0
-- **Key Auto-Detection**: Regex-based provider identification (probe-based detection disabled for safety)
-- **Plugin Auto-Discovery**: Scanners loaded dynamically — just drop in a new file
-- **CI/CD Ready**: Exit codes (0=clean, 1=accessible, 2=error), SARIF for GitHub Code Scanning
-- **Batch Scanning**: Scan multiple keys from a file
-- **Key Extraction**: Scan codebases for leaked keys
-- **Notifications**: Slack & Discord webhook alerts
+[Features](#-features) · [Quick start](#-quick-start) · [How it works](#-how-it-works) · [Safety](#%EF%B8%8F-safety--consent) · [CLI](#-cli-reference) · [Exit codes](#-exit-codes-cicd)
 
-> **Breaking change (B04, Nov 2026):** `status_text` values changed: `"VULNERABLE"` → `"ACCESSIBLE"`, network error severity `CRITICAL` → `ERROR`. Reports/notifiers now use the `outcome` field as machine contract. Active checks run by default; use `--no-active-checks` to disable.
+</div>
 
 ---
 
-## Installation
+## ✨ Features
+
+| | Capability | Detail |
+|---|---|---|
+| 🌐 | **14 providers** | Google Cloud, Azure, OpenAI, AWS, GitHub, Anthropic, HuggingFace, Stripe, Twilio, Slack, Discord, SendGrid, GitLab, DigitalOcean |
+| ⚡ | **Async & concurrent** | `asyncio` + `aiohttp`, bounded concurrency and request rate as *separate* limits |
+| 🏷️ | **Honest outcomes** | `ACCESSIBLE / RESTRICTED / UNAUTHORIZED / NOT_FOUND / BAD_REQUEST / INCONCLUSIVE / ERROR / SKIPPED` — 200 alone is never called a confirmed vulnerability |
+| 📊 | **5 report formats** | Console, JSON, HTML dashboard, CSV, SARIF 2.1.0 (GitHub Code Scanning ready) |
+| 🔍 | **Key auto-detection** | Regex-based provider identification (probe-based detection disabled for safety) |
+| 🧩 | **Plugin auto-discovery** | Drop a new `scanners/<provider>_scanner.py` in — it loads itself |
+| 🔒 | **Credential masking** | Prefix-only masking everywhere (console, reports, filenames) — suffixes never shown |
+| 🗄️ | **Encrypted vault** | Optional per-run AES-256-GCM credential vault with operator-only ACL |
+| 📦 | **Batch + extract** | Multi-key scans with manifest reconciliation, and codebase key extraction |
+| 🔔 | **Notifications** | Slack & Discord webhooks with structured delivery outcomes, redacted URLs |
+
+> [!IMPORTANT]
+> **Breaking change (B04, Nov 2026):** `status_text` values changed — `"VULNERABLE"` → `"ACCESSIBLE"`,
+> network error severity `CRITICAL` → `ERROR`. Reports and notifiers use the `outcome` field as the
+> machine contract. Active checks run **by default**; use `--no-active-checks` to disable.
+
+---
+
+## 🚀 Quick start
 
 Requires **Python 3.10+**.
 
 ```bash
-pip install -r requirements.txt
-```
-
-Or install as a package:
-```bash
+# install
 pip install -e .
-```
 
----
-
-## Usage
-
-### Credential masking and optional encrypted vault
-> **Kapan:** sebelum scan yang sudah diotorisasi · **Siapa:** operator.
-
-Logger/report mask API keys and tokens of at least 16 characters as their first
-8 characters followed by `....`; shorter values, passwords and Basic credentials
-are hidden completely. No suffix is shown. Metadata stays readable. Recognized
-auth cookie names and known credential reflections are masked; unknown cookie
-names are unclassified, not guaranteed safe. This is not a PII filter.
-
-The sanitizer parses mappings/lists, bounded JSON/Python literal representations,
-query parameters and cookies. It never uses eval. Limits are 65,536 characters
-for structured text, 4,096 for regex fallback and 24 levels for tree traversal;
-over-limit evidence gets an explicit omission marker. Unknown aliases, arbitrary
-encodings and binary secrets are not comprehensively detected.
-
-Vault mode is opt-in: add `--vault-dir <existing-parent-directory>` to an
-authorized `scan` invocation. It creates one private run subdirectory and one
-`.akv` file for single or batch input. This option does not make provider checks
-non-mutating: B02 safety work is separate. This section does not instruct anyone
-to run a scan merely to test the vault.
-
-> **Kapan:** otomatis sebelum deteksi/probe/scan dalam mode vault · **Siapa:** runtime.
-
-A random per-run password appears once on the controlling terminal, never via
-stdout/stderr. Save it in a separate password manager and enter `SAVED`. Without
-a controlling terminal or verifiable operator-only ACL, vault mode fails closed.
-CI/non-interactive vault use is unsupported. Credential checkpoints are encrypted
-before disk writes and persisted before processing each input; failure stops the
-remaining run. After the first checkpoint succeeds, the controlling terminal
-shows the absolute vault path and Scan ID. Reports contain both opaque
-`vault_run` and `vault_record` references (CSV adds columns); locate the file
-named `<vault_run>.akv` in the selected vault parent.
-
-Format v1: fixed magic/version, random 16-byte salt and 12-byte nonce; scrypt
-N=131072/r=8/p=1 derives a 32-byte key; AES-256-GCM authenticates the header and
-payload. Maximum vault size is 16 MiB. No plaintext temporary export is created.
-
-### Open a vault locally
-> **Kapan:** saat operator perlu membuka hasil tersimpan · **Siapa:** operator.
-
-Run `python apiKeyScan.py vault-open <vault.akv>`. Password input has no echo;
-decrypted credential output goes only to the controlling terminal, not a file or
-redirected stdout/stderr. Opening a vault does not contact any provider.
-
-Keep encrypted backups and passwords separately; choose retention manually and
-delete vaults when no longer needed. A lost password cannot be recovered.
-Terminal recordings, scrollback, screenshots and a compromised host remain risks.
-No SSD secure-deletion or Python memory-zeroization guarantee is made. After
-interruption the last completed atomic checkpoint remains available; an abrupt
-kill may leave ciphertext-only temporary files, and data still in memory may be
-lost. Power-loss durability beyond filesystem guarantees is not promised.
-
-### Scan a single key (auto-detect provider)
-```bash
+# scan a single key (provider auto-detected)
 python apiKeyScan.py scan -k AIzaSy...
-```
 
-### Scan with explicit provider and all report formats
-```bash
+# explicit provider + all report formats
 python apiKeyScan.py scan -p github -k ghp_xxxx --all-formats
-```
 
-### Batch scan from file
-```bash
+# batch scan from a keyfile
 python apiKeyScan.py scan --keyfile keys.txt --html --sarif
-```
 
-### AWS credentials (requires secret key)
-```bash
-python apiKeyScan.py scan -p aws -k AKIAXXXXXX --secret YYYYYYYY --all-formats
-```
-
-### Extract keys from a codebase
-```bash
+# extract leaked keys from a codebase
 python apiKeyScan.py extract ./repo/
 ```
 
-### List available checks
+<details>
+<summary><b>▸ More examples</b> (AWS pair, notifications, config presets, vault)</summary>
+
 ```bash
+# AWS requires the secret pair
+python apiKeyScan.py scan -p aws -k AKIAXXXXXX --secret YYYYYYYY --all-formats
+
+# notifications
+python apiKeyScan.py scan -p stripe -k sk_live_... --notify-slack $URL
+
+# YAML config preset
+python apiKeyScan.py scan --config preset.yaml
+
+# encrypted credential vault (interactive terminal only)
+python apiKeyScan.py scan -p google -k AIzaSy... --vault-dir ./vaults
+
+# open a stored vault (no provider contact)
+python apiKeyScan.py vault-open <vault.akv>
+
+# list available checks
 python apiKeyScan.py list-checks --provider google
 ```
 
-### With notifications
-```bash
-python apiKeyScan.py scan -p stripe -k sk_live_... --notify-slack $URL
+</details>
+
+---
+
+## 🧭 How it works
+
+```mermaid
+flowchart LR
+    A["🔑 Input<br/>key / keyfile / codebase"] --> B["🧬 Detect<br/>regex patterns<br/><i>probe disabled</i>"]
+    B --> C["🛡️ Prerequisite<br/>validation<br/><i>no request on bad input</i>"]
+    C --> D["📡 Checks<br/>async · rate-limited<br/>retry-safe"]
+    D --> E{"Outcome"}
+    E -->|"200 + data"| F["ACCESSIBLE"]
+    E -->|"200 + error / 403"| G["RESTRICTED"]
+    E -->|"401"| H["UNAUTHORIZED"]
+    E -->|"empty / malformed"| I["INCONCLUSIVE"]
+    E -->|"network"| J["ERROR"]
+    D -.->|"--no-active-checks"| K["SKIPPED<br/><i>with reason</i>"]
+    F & G & H & I & J & K --> L["🧾 Sanitized evidence<br/>prefix-masked · truncation marked"]
+    L --> M["📊 Reports<br/>JSON · HTML · CSV · SARIF + manifest"]
 ```
 
-### Config preset
-```bash
-python apiKeyScan.py scan --config preset.yaml
-```
+Every execution ends in exactly one recorded outcome per check — `planned = completed + failed + skipped`,
+reconciled in the batch manifest. Evidence is sanitized *before* it touches any output path.
 
-### Active checks and safety
+---
+
+## 🛡️ Safety & consent
+
 > **Kapan:** sebelum scan dengan credential · **Siapa:** operator.
 
-Active checks (HTTP calls that may read or mutate provider resources) run by
-default when credentials are provided. Use `--no-active-checks` to disable all
-active checks and record them as SKIPPED with an explicit reason. The legacy
-`--active-checks` flag is accepted as a no-op for backward compatibility.
+- **Active checks run by default.** This tool exists to *validate* capabilities, not merely list them.
+  Mutating/billable checks (account creation, message/push send, generation, mail send) execute when
+  credentials are provided — that is the point. Use `--no-active-checks` to disable them; they are
+  recorded as `SKIPPED` with an explicit reason, never silently dropped.
+- `--active-checks` remains accepted as a **no-op** for backward compatibility.
+- `--force-probe` is **deprecated and rejected** (exit code 2) — probe-based provider detection sends
+  credentials to provider endpoints and stays disabled. Specify the provider with `-p` instead.
+- Rate limiting is enforced **per attempt, including retries**. POST (non-idempotent) is never retried
+  after an ambiguous result like a timeout.
 
-`--force-probe` is **deprecated and rejected** with exit code 2. Probe-based
-provider detection is disabled for safety. Specify the provider explicitly with
-`-p` instead.
+> [!WARNING]
+> Running scans with real keys creates real effects: accounts may be created, messages sent, and
+> billing consumed. Scan only keys you are authorized to test.
 
-### CLI options reference
+---
+
+## 🗄️ Credential masking & encrypted vault
+
+> **Kapan:** sebelum scan yang sudah diotorisasi · **Siapa:** operator.
+
+**Masking.** Keys and tokens ≥ 16 characters show as their first 8 characters + `....`;
+shorter values, passwords and Basic credentials are hidden completely. No suffix is ever shown.
+Hosts, paths, field names, statuses and reasons stay readable. This is not a PII filter.
+
+> **Kapan:** otomatis sebelum deteksi/probe/scan dalam mode vault · **Siapa:** runtime.
+
+**Vault.** Opt in with `--vault-dir <existing-parent>` to store the run's credentials in a single
+encrypted `.akv` file (AES-256-GCM, scrypt N=131072/r=8/p=1, random salt+nonce per checkpoint,
+16 MiB cap). The password is generated per run, shown **once** on the controlling terminal, and
+saved by you in a separate password manager. Without a controlling terminal or operator-only ACL
+the vault fails closed. Reports carry opaque `vault_run`/`vault_record` references only.
+
+> **Kapan:** saat operator perlu membuka hasil tersimpan · **Siapa:** operator.
+
+Open locally with `python apiKeyScan.py vault-open <vault.akv>` — no-echo password input, output only
+to the controlling terminal, zero provider contact. A lost password cannot be recovered; keep backups
+and passwords separately.
+
+---
+
+## 🎛️ CLI reference
+
 > **Kapan:** saat konfigurasi scan · **Siapa:** operator.
 
 | Option | Description |
 |--------|-------------|
-| `--no-active-checks` | Disable active checks; record as SKIPPED with reason |
-| `--no-color` | Disable colored output |
-| `--quiet` | Suppress routine output (errors still printed) |
-| `--verbose` | Show URL and reason in scan results |
-| `--severity-filter ERROR` | Display only findings at or above severity |
-| `--overwrite` | Overwrite existing report files |
-| `--concurrency N` | Max concurrent checks (default: 10) |
-| `--connect-timeout S` | Connection timeout in seconds |
-| `--read-timeout S` | Read timeout in seconds |
-| `--account-sid SID` | Twilio account SID (required for Twilio) |
-| `--config FILE` | Load config preset from YAML |
-| `--vault-dir DIR` | Enable encrypted credential vault |
+| `--no-active-checks` | Disable mutating/billable checks; recorded as SKIPPED with reason |
+| `--no-color` | Strip ANSI from every output path |
+| `--quiet` | Suppress routine output (scan errors and exit codes still reported) |
+| `--verbose` | Show URL and reason per result |
+| `--severity-filter ERROR` | Display-only filter — full results are always stored |
+| `--overwrite` | Overwrite existing report files (default: refuse) |
+| `--concurrency N` | Max concurrent checks |
+| `--connect-timeout S` / `--read-timeout S` | Transport timeouts in seconds |
+| `--account-sid SID` | Twilio account SID (identifier, not a secret) |
+| `--config FILE` | YAML preset — precedence: defaults < config < explicit CLI flags |
+| `--vault-dir DIR` | Enable the encrypted credential vault |
 
-### Docker
+---
+
+## 🚦 Exit codes (CI/CD)
+
+| Code | `scan` | `extract` |
+|------|--------|-----------|
+| ✅ `0` | Completed — no accessible findings, no errors | No candidates found (inspection completeness message shown) |
+| 🟡 `1` | At least one `ACCESSIBLE` finding | Candidate keys found |
+| 🔴 `2` | Error: input, scan failure, partial failure, all-unauthorized | Inspection failure or `--scan` rejected |
+
+> [!NOTE]
+> A scan where **zero** checks executed, all requests failed, or every result is `UNAUTHORIZED`
+> never reports clean — it exits `2`. Error wins over findings.
+
+---
+
+## 🏗️ Architecture
+
+```text
+apiKeyScan/
+├── apiKeyScan.py               # async entry point · subcommands scan/extract/list-checks/vault-open
+├── core/
+│   ├── base_scanner.py         # BaseScanner · ScanResult outcome contract · evidence pipeline
+│   ├── config.py               # YAML schema + validation · default < config < CLI precedence
+│   ├── key_detector.py         # regex detection (offline) + safe key extraction
+│   ├── notifier.py             # Slack/Discord · structured NotificationResult · redacted URLs
+│   ├── plugin_loader.py        # dynamic scanner discovery · failures surfaced, never silent
+│   ├── redaction.py            # shared sanitizer · prefix masking · cookie/session aliases
+│   ├── report_engine.py        # console + JSON/HTML/CSV/SARIF + batch manifest
+│   ├── transport.py            # rate limiter · retry/backoff · Retry-After handling
+│   └── vault.py                # encrypted per-run credential vault (AES-256-GCM)
+└── scanners/                   # 14 providers — google 24 checks · openai 9 · aws 9 · github 9 · …
+```
+
+Adding a scanner: create `scanners/<provider>_scanner.py` inheriting `BaseScanner`, define
+`PROVIDER_NAME` and `CHECKS`, implement `async def scan()`. The plugin loader finds it automatically.
+
+---
+
+## 🐳 Docker
+
 > **Kapan:** saat eksekusi terisolasi via container · **Siapa:** operator.
-> **Status:** Dockerfile dan Compose disediakan; build/runtime belum dieksekusi dalam sesi ini (acceptance criterion 5 belum terpenuhi).
+> **Status:** Dockerfile dan Compose disediakan; build/runtime **belum dieksekusi** dalam sesi pengembangan ini — acceptance canary build dan verifikasi permission volume masih terbuka.
 
 ```bash
 docker-compose run apikeyscan scan -p google -k AIzaSy...
 ```
 
-The image uses `python:3.10-slim`, runs as a non-root user (UID 1000), and
-installs from the project wheel. Reports are written to a named persistent
-volume (`apikeyscan-reports`). The root filesystem is read-only with a tmpfs
-for `/tmp`.
+`python:3.10-slim`, non-root user (UID 1000), read-only rootfs + tmpfs `/tmp`, reports to the named
+volume `apikeyscan-reports`. Build context excludes credentials, reports, VCS and caches (`.dockerignore`).
 
 ---
 
-## Exit Codes (CI/CD)
+## 🧪 Development
 
-| Code | scan subcommand | extract subcommand |
-|------|----------------|-------------------|
-| 0    | No accessible findings, no errors | No candidate keys found |
-| 1    | At least one ACCESSIBLE finding | Candidate keys found |
-| 2    | Error (input, scan failure, all-unauthorized) | Inspection failure or `--scan` rejected |
-
----
-
-## Architecture
-
-```text
-apiKeyScan/
-├── apiKeyScan.py              # Async entry point with subcommands
-├── core/
-│   ├── base_scanner.py        # Async BaseScanner + aiohttp + severity
-│   ├── config.py              # YAML config loading + CLI merge (B08)
-│   ├── key_detector.py        # Regex auto-detection + key extraction (B03/B12)
-│   ├── notifier.py            # Slack/Discord webhooks (B14)
-│   ├── plugin_loader.py       # Dynamic scanner discovery (B14)
-│   ├── redaction.py           # Credential masking/sanitization (B01)
-│   ├── report_engine.py       # Console + JSON + HTML + CSV + SARIF
-│   ├── transport.py           # Rate limiting + retry/backoff (B10)
-│   └── vault.py               # Encrypted credential vault (B01V)
-└── scanners/
-    ├── google_scanner.py      # 24 checks
-    ├── azure_scanner.py       # 5 checks
-    ├── openai_scanner.py      # 9 checks
-    ├── aws_scanner.py         # 9 checks (boto3 via to_thread)
-    ├── github_scanner.py      # 9 checks
-    ├── anthropic_scanner.py   # 3 checks
-    ├── huggingface_scanner.py # 5 checks
-    ├── stripe_scanner.py      # 7 checks
-    ├── twilio_scanner.py      # 5 checks
-    ├── slack_scanner.py       # 5 checks
-    ├── discord_scanner.py     # 3 checks
-    ├── sendgrid_scanner.py    # 5 checks
-    ├── gitlab_scanner.py      # 5 checks
-    └── digitalocean_scanner.py# 7 checks
+```bash
+pytest                                          # 669 tests · network guard active by default
+pytest --cov=core --cov=scanners --cov=apiKeyScan --cov-branch   # coverage (baseline 78%)
+ruff check . && ruff format --check .           # lint + format (ruff==0.8.4, pinned)
+mypy core/ scanners/ apiKeyScan.py              # types (mypy==2.4.0, pinned)
 ```
 
-To add a new scanner, create a `scanners/<provider>_scanner.py` file with a class inheriting from `BaseScanner`. Define `PROVIDER_NAME` and `CHECKS` class attributes, implement `async def scan()`. The plugin loader discovers it automatically.
+The test suite **cannot** reach the network: `tests/conftest.py` blocks non-loopback sockets and DNS
+before collection, and `tests/test_network_guard.py` locks that guard in place. All fixtures are
+synthetic — they are not evidence of current provider API behavior.
+
+<details>
+<summary><b>▸ Known limitations (open items)</b></summary>
+
+- Docker build-context canary and Compose volume permission verification — requires a Docker-enabled session.
+- Fully clean-room wheel install (no pre-existing deps) is not tested — network is blocked by design.
+- 9 of 14 scanners have thin HTTP-path coverage (shared infrastructure is 88%+) — post-stabilization fixture work.
+- CI matrix (3.10–3.13) is configured; older-interpreter runs are verified by the CI pipeline itself.
+
+</details>
 
 ---
 
-## Disclaimer
+<div align="center">
 
-**Educational and Authorized Security Use Only.**
+**Educational and authorized security use only.** Scan only keys and systems you are permitted to test.
+
+MIT License · Built with asyncio, aiohttp, and a stubborn respect for honest evidence.
+
+</div>
