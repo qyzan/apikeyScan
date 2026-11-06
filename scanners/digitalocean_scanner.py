@@ -45,13 +45,13 @@ class DigitalOceanScanner(BaseScanner):
         headers: dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
 
         checks = [
-            self._check_account(headers),
-            self._check_droplets(headers),
-            self._check_spaces_keys(headers),
-            self._check_ssh_keys(headers),
-            self._check_databases(headers),
-            self._check_k8s_clusters(headers),
-            self._check_firewalls(headers),
+            ("Account", self._check_account(headers)),
+            ("Droplets", self._check_droplets(headers)),
+            ("Spaces Keys", self._check_spaces_keys(headers)),
+            ("SSH Keys", self._check_ssh_keys(headers)),
+            ("Databases", self._check_databases(headers)),
+            ("Kubernetes Clusters", self._check_k8s_clusters(headers)),
+            ("Firewalls", self._check_firewalls(headers)),
         ]
         await self._run_checks(checks)
 

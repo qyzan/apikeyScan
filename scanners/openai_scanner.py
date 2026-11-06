@@ -55,15 +55,25 @@ class OpenAIScanner(BaseScanner):
         }
 
         checks = [
-            self._check_models(headers),
-            self._check_chat(headers),
-            self._check_dalle(headers),
-            self._check_files(headers),
-            self._check_fine_tuning(headers),
-            self._check_assistants(beta_headers),
-            self._check_vector_stores(beta_headers),
-            self._check_batches(headers),
-            self._check_moderations(headers),
+            ("Models", self._check_models(headers)),
+            ("Chat Generative", self._check_chat(headers))
+            if self.active_checks
+            else (
+                "Chat Generative",
+                self._skip_check("OpenAI Chat Generative", "billable generation (chat completions)"),
+            ),
+            ("DALL-E Images", self._check_dalle(headers))
+            if self.active_checks
+            else (
+                "DALL-E Images",
+                self._skip_check("OpenAI DALL-E Images", "billable generation (image generation)"),
+            ),
+            ("Uploaded Files", self._check_files(headers)),
+            ("Fine-Tuning Jobs", self._check_fine_tuning(headers)),
+            ("Assistants", self._check_assistants(beta_headers)),
+            ("Vector Stores", self._check_vector_stores(beta_headers)),
+            ("Batches", self._check_batches(headers)),
+            ("Moderations", self._check_moderations(headers)),
         ]
         await self._run_checks(checks)
 

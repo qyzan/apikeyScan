@@ -84,41 +84,86 @@ class GoogleScanner(BaseScanner):
         """Run all Google API reconnaissance checks concurrently."""
         print(f"\n{self._c(Fore.CYAN)}=== GOOGLE API RECON ==={Style.RESET_ALL}\n")
 
-        checks: list[Any] = [
-            self._check_identity_toolkit(),
-            self._check_maps_static(),
-            self._check_vision(),
-            self._check_translate(),
-            self._check_youtube(),
-            self._check_custom_search(),
-            self._check_pagespeed(),
-            self._check_safe_browsing(),
-            self._check_drive(),
-            self._check_places(),
-            self._check_directions(),
-            self._check_geocoding(),
-            self._check_distance_matrix(),
-            self._check_gemini(),
+        checks: list[tuple[str, Any]] = [
+            ("Identity Toolkit (SignUp)", self._check_identity_toolkit())
+            if self.active_checks
+            else (
+                "Identity Toolkit (SignUp)",
+                self._skip_check("Identity Toolkit (SignUp)", "mutating operation (account creation)"),
+            ),
+            ("Google Maps (Static Map)", self._check_maps_static()),
+            ("Cloud Vision API", self._check_vision()),
+            ("Cloud Translation API", self._check_translate()),
+            ("YouTube Data API", self._check_youtube()),
+            ("Custom Search API", self._check_custom_search()),
+            ("PageSpeed Insights API", self._check_pagespeed()),
+            ("Safe Browsing API", self._check_safe_browsing()),
+            ("Google Drive API", self._check_drive()),
+            ("Google Places API", self._check_places()),
+            ("Google Directions API", self._check_directions()),
+            ("Google Geocoding API", self._check_geocoding()),
+            ("Google Distance Matrix API", self._check_distance_matrix()),
+            ("Google Gemini API", self._check_gemini()),
         ]
 
         target_bucket = self.bucket_name or self.project_id
         if target_bucket:
-            checks.append(self._check_gcs_bucket(target_bucket))
+            checks.append(("GCS Bucket List", self._check_gcs_bucket(target_bucket)))
+        else:
+            checks.append(
+                (
+                    "GCS Bucket List",
+                    self._skip_check(
+                        "GCS Bucket List",
+                        "missing parameter: project_id or bucket_name",
+                        category="MISSING PARAMETER",
+                    ),
+                )
+            )
+
+        project_scoped: list[tuple[str, str]] = [
+            ("Firebase Remote Config (Template)", "Firebase Remote Config"),
+            ("Firebase RTDB (-default-rtdb)", "Firebase RTDB (-default-rtdb)"),
+            ("Firebase RTDB (Legacy)", "Firebase RTDB (Legacy)"),
+            ("Firestore List Documents", "Firestore List Documents"),
+            ("FCM HTTP v1 API", "FCM HTTP v1 API"),
+            ("Google Secret Manager", "Google Secret Manager"),
+            ("Google Cloud KMS", "Google Cloud KMS"),
+            ("Google Cloud Build", "Google Cloud Build"),
+            ("Google Cloud SQL", "Google Cloud SQL"),
+        ]
 
         if self.project_id:
             checks.extend(
                 [
-                    self._check_firebase_remote_config(),
-                    self._check_firebase_rtdb_default(),
-                    self._check_firebase_rtdb_legacy(),
-                    self._check_firestore(),
-                    self._check_fcm_v1(),
-                    self._check_secret_manager(),
-                    self._check_cloud_kms(),
-                    self._check_cloud_build(),
-                    self._check_cloud_sql(),
+                    ("Firebase Remote Config (Template)", self._check_firebase_remote_config()),
+                    ("Firebase RTDB (-default-rtdb)", self._check_firebase_rtdb_default()),
+                    ("Firebase RTDB (Legacy)", self._check_firebase_rtdb_legacy()),
+                    ("Firestore List Documents", self._check_firestore()),
+                    ("FCM HTTP v1 API", self._check_fcm_v1())
+                    if self.active_checks
+                    else (
+                        "FCM HTTP v1 API",
+                        self._skip_check("FCM HTTP v1 API", "mutating operation (push notification send)"),
+                    ),
+                    ("Google Secret Manager", self._check_secret_manager()),
+                    ("Google Cloud KMS", self._check_cloud_kms()),
+                    ("Google Cloud Build", self._check_cloud_build()),
+                    ("Google Cloud SQL", self._check_cloud_sql()),
                 ]
             )
+        else:
+            for check_id, svc_name in project_scoped:
+                checks.append(
+                    (
+                        check_id,
+                        self._skip_check(
+                            svc_name,
+                            "missing parameter: project_id",
+                            category="MISSING PARAMETER",
+                        ),
+                    )
+                )
 
         await self._run_checks(checks)
 

@@ -8,13 +8,28 @@ import csv
 import html as html_lib
 import json
 from datetime import datetime
+from types import SimpleNamespace
 from typing import Any
 
 from colorama import Fore, Style
 
+from core.redaction import mask, scanner_sanitizer
+
 
 class ReportEngine:
     """Static report generation engine for all output formats."""
+
+    @staticmethod
+    def _safe_snapshot(scanner: Any) -> Any:
+        """Sanitize even externally populated results without changing the scanner."""
+        sanitizer = scanner_sanitizer(scanner, scanner.results, scanner.raw_data)
+        return SimpleNamespace(
+            api_key=ReportEngine._mask_key(scanner.api_key),
+            results=sanitizer.clean(scanner.results),
+            raw_data=sanitizer.clean(scanner.raw_data),
+            vault_ref=getattr(scanner, "vault_ref", None),
+            vault_run=getattr(scanner, "vault_run", None),
+        )
 
     @staticmethod
     def _mask_key(api_key: str) -> str:
@@ -24,30 +39,75 @@ class ReportEngine:
             api_key: The API key to mask.
 
         Returns:
-            Masked key string (first 5 + ... + last 5 chars).
+            Prefix-only token mask, or a full redaction marker for short inputs.
         """
-        if len(api_key) > 10:
-            return f"{api_key[:5]}...{api_key[-5:]}"
-        return "***"
+        return mask(api_key)
+
+    _SEVERITY_FILTER_MAP: dict[str, int] = {
+        "critical": 0,
+        "high": 2,
+        "medium": 3,
+        "low": 4,
+    }
 
     @staticmethod
-    def display_console_summary(scanner: Any, provider_name: str) -> None:
+    def display_console_summary(
+        scanner: Any,
+        provider_name: str,
+        severity_filter: str | None = None,
+        verbose: bool = False,
+    ) -> None:
         """Print a colorized console summary table of all scan results.
 
         Args:
             scanner: The scanner instance with results and raw_data.
             provider_name: The provider name for the summary header.
+            severity_filter: Optional minimum severity to display (critical/high/medium/low).
+                Results below this severity are hidden from display but still stored.
+            verbose: If True, show URL and reason for each result.
         """
-        print(f"\n{Fore.CYAN}{'=' * 70}")
+        no_color = getattr(scanner, "no_color", False)
+        cyan = "" if no_color else Fore.CYAN
+        reset = "" if no_color else Style.RESET_ALL
+
+        scanner = ReportEngine._safe_snapshot(scanner)
+        all_results = scanner.results
+        all_raw = scanner.raw_data
+
+        max_order = ReportEngine._SEVERITY_FILTER_MAP.get(severity_filter or "", 99)
+        severity_order = {"CRITICAL": 0, "ERROR": 1, "HIGH": 2, "MEDIUM": 3, "LOW": 4, "INFO": 5}
+
+        visible = []
+        hidden_count = 0
+        for i, res in enumerate(all_results):
+            sev = res.get("severity", "INFO")
+            if severity_order.get(sev, 5) <= max_order:
+                visible.append((res, all_raw[i] if i < len(all_raw) else {}))
+            else:
+                hidden_count += 1
+
+        print(f"\n{cyan}{'=' * 70}")
         print(f"{'SERVICE':<45} | {'RESULT':<25}")
-        print(f"{'=' * 70}{Style.RESET_ALL}")
-        for res in scanner.results:
-            color = res.get("color", "")
+        print(f"{'=' * 70}{reset}")
+        for res, raw in visible:
+            color = "" if no_color else res.get("color", "")
             status = res["status_text"]
             service = res["service"]
             severity = res.get("severity", "INFO")
-            print(f"{color}{service:<45} | {status:<25}{Style.RESET_ALL} [{severity}]")
-        print(f"{Fore.CYAN}{'=' * 70}{Style.RESET_ALL}\n")
+            print(f"{color}{service:<45} | {status:<25}{reset} [{severity}]")
+            if verbose:
+                url = raw.get("url", "N/A")
+                reason = raw.get("reason", "")
+                print(f"  URL: {url}")
+                if reason:
+                    print(f"  Reason: {reason}")
+        print(f"{cyan}{'=' * 70}{reset}")
+
+        if hidden_count > 0:
+            total = len(all_results)
+            print(f"  {hidden_count} result(s) hidden by severity filter ({total} total)\n")
+        else:
+            print()
 
     @staticmethod
     def generate_json_report(scanner: Any, provider_name: str, filename: str | None = None) -> str:
@@ -61,6 +121,7 @@ class ReportEngine:
         Returns:
             The filename of the generated report.
         """
+        scanner = ReportEngine._safe_snapshot(scanner)
         if not filename:
             filename = f"pentest_{provider_name}_report.json"
 
@@ -71,10 +132,12 @@ class ReportEngine:
                 {
                     "scan_metadata": {
                         "provider": provider_name,
+                        "vault_record": scanner.vault_ref,
+                        "vault_run": scanner.vault_run,
                         "timestamp": datetime.now().isoformat(),
                         "api_key_scanned": masked_key,
                         "total_checks": len(scanner.results),
-                        "vulnerable_count": sum(1 for r in scanner.results if "VULNERABLE" in r["status_text"]),
+                        "vulnerable_count": sum(1 for r in scanner.results if r.get("outcome") == "accessible"),
                     },
                     "results": scanner.results,
                     "raw_responses": scanner.raw_data,
@@ -98,12 +161,15 @@ class ReportEngine:
         Returns:
             The filename of the generated report.
         """
+        scanner = ReportEngine._safe_snapshot(scanner)
         if not filename:
             filename = f"pentest_{provider_name}_report.csv"
 
         with open(filename, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(["service", "status_text", "status_code", "severity", "url", "timestamp"])
+            writer.writerow(
+                ["service", "status_text", "status_code", "severity", "url", "timestamp", "vault_record", "vault_run"]
+            )
             timestamp = datetime.now().isoformat()
             for i, res in enumerate(scanner.results):
                 raw = scanner.raw_data[i] if i < len(scanner.raw_data) else {}
@@ -115,6 +181,8 @@ class ReportEngine:
                         res.get("severity", "INFO"),
                         raw.get("url", "N/A"),
                         timestamp,
+                        scanner.vault_ref,
+                        scanner.vault_run,
                     ]
                 )
         print(f"{Fore.BLUE}[INFO] CSV Report saved to: {filename}{Style.RESET_ALL}")
@@ -132,6 +200,7 @@ class ReportEngine:
         Returns:
             The filename of the generated report.
         """
+        scanner = ReportEngine._safe_snapshot(scanner)
         if not filename:
             filename = f"pentest_{provider_name}_report.sarif"
 
@@ -141,10 +210,11 @@ class ReportEngine:
             "runs": [
                 {
                     "tool": {"driver": {"name": "apiKeyScan", "version": "2.0.0"}},
+                    "properties": {"vault_record": scanner.vault_ref, "vault_run": scanner.vault_run},
                     "results": [
                         {
                             "ruleId": res["service"],
-                            "level": "error" if "VULNERABLE" in res["status_text"] else "note",
+                            "level": "error" if res.get("outcome") == "accessible" else "note",
                             "message": {"text": res["status_text"]},
                             "locations": [
                                 {
@@ -177,22 +247,24 @@ class ReportEngine:
         Returns:
             The filename of the generated report.
         """
+        scanner = ReportEngine._safe_snapshot(scanner)
         if not filename:
             filename = f"pentest_{provider_name}_report.html"
 
         total = len(scanner.results)
-        vulnerable = sum(1 for r in scanner.results if "VULNERABLE" in r["status_text"])
-        restricted = sum(1 for r in scanner.results if "RESTRICTED" in r["status_text"])
-        errors = sum(1 for r in scanner.results if "ERROR" in r["status_text"])
-        sum(1 for r in scanner.results if "UNAUTHORIZED" in r["status_text"])
+        vulnerable = sum(1 for r in scanner.results if r.get("outcome") == "accessible")
+        restricted = sum(1 for r in scanner.results if r.get("outcome") == "restricted")
+        errors = sum(1 for r in scanner.results if r.get("outcome") == "error")
+        sum(1 for r in scanner.results if r.get("outcome") == "unauthorized")
 
-        sev_counts: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
+        sev_counts: dict[str, int] = {"CRITICAL": 0, "ERROR": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "INFO": 0}
         for r in scanner.results:
             sev = r.get("severity", "INFO")
             sev_counts[sev] = sev_counts.get(sev, 0) + 1
 
         sev_colors = {
             "CRITICAL": "#ff4444",
+            "ERROR": "#ff44ff",
             "HIGH": "#ff8800",
             "MEDIUM": "#ffdd44",
             "LOW": "#44ddff",
@@ -262,6 +334,8 @@ class ReportEngine:
         <h1>apiKeyScan Security Reconnaissance Report</h1>
         <div class="header-info">
             <p><strong>Provider:</strong> {provider_name.upper()}</p>
+            <p><strong>Vault record:</strong> {html_lib.escape(scanner.vault_ref or '')}</p>
+            <p><strong>Vault run:</strong> {html_lib.escape(scanner.vault_run or '')}</p>
             <p><strong>Date Scanned:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
         </div>
 
@@ -307,17 +381,17 @@ class ReportEngine:
 """
         for i, raw in enumerate(scanner.raw_data):
             res = scanner.results[i]
-            status_class = res["status_text"].lower()
-            if "vulnerable" in status_class:
+            outcome_val = res.get("outcome", "")
+            if outcome_val == "accessible":
                 status_class = "vulnerable"
                 data_status = "vulnerable"
-            elif "restricted" in status_class:
+            elif outcome_val == "restricted":
                 status_class = "restricted"
                 data_status = "restricted"
-            elif "unauthorized" in status_class:
+            elif outcome_val == "unauthorized":
                 status_class = "unauthorized"
                 data_status = "restricted"
-            elif "error" in status_class:
+            elif outcome_val == "error":
                 status_class = "other"
                 data_status = "error"
             else:
@@ -383,3 +457,244 @@ class ReportEngine:
         files.append(ReportEngine.generate_csv_report(scanner, provider_name, f"{prefix}.csv"))
         files.append(ReportEngine.generate_sarif_report(scanner, provider_name, f"{prefix}.sarif"))
         return files
+
+    @staticmethod
+    def generate_json_batch_report(scanners_with_providers: list[tuple[Any, str]], filename: str) -> str:
+        """Generate a batch JSON report with all scanners' results.
+
+        Args:
+            scanners_with_providers: List of (scanner, provider_name) tuples.
+            filename: Output filename.
+
+        Returns:
+            The filename of the generated report.
+        """
+        timestamp = datetime.now().isoformat()
+        batch_id = f"batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        scans: list[dict[str, Any]] = []
+        for scanner, provider_name in scanners_with_providers:
+            snap = ReportEngine._safe_snapshot(scanner)
+            scans.append(
+                {
+                    "provider": provider_name,
+                    "api_key_scanned": snap.api_key,
+                    "vault_record": snap.vault_ref,
+                    "vault_run": snap.vault_run,
+                    "results": snap.results,
+                    "raw_responses": snap.raw_data,
+                }
+            )
+
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "scan_metadata": {
+                        "batch_id": batch_id,
+                        "timestamp": timestamp,
+                        "inputs_total": len(scanners_with_providers),
+                        "scanners_completed": len(scanners_with_providers),
+                    },
+                    "scans": scans,
+                },
+                f,
+                indent=4,
+                default=str,
+            )
+        print(f"{Fore.BLUE}[INFO] JSON Report saved to: {filename}{Style.RESET_ALL}")
+        return filename
+
+    @staticmethod
+    def generate_csv_batch_report(scanners_with_providers: list[tuple[Any, str]], filename: str) -> str:
+        """Generate a batch CSV report with provider and masked key columns.
+
+        Args:
+            scanners_with_providers: List of (scanner, provider_name) tuples.
+            filename: Output filename.
+
+        Returns:
+            The filename of the generated report.
+        """
+        with open(filename, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                ["provider", "api_key", "service", "status_text", "status_code", "severity", "url", "timestamp"]
+            )
+            timestamp = datetime.now().isoformat()
+            for scanner, provider_name in scanners_with_providers:
+                snap = ReportEngine._safe_snapshot(scanner)
+                for i, res in enumerate(snap.results):
+                    raw = snap.raw_data[i] if i < len(snap.raw_data) else {}
+                    writer.writerow(
+                        [
+                            provider_name,
+                            snap.api_key,
+                            res["service"],
+                            res["status_text"],
+                            res.get("status_code", ""),
+                            res.get("severity", "INFO"),
+                            raw.get("url", "N/A"),
+                            timestamp,
+                        ]
+                    )
+        print(f"{Fore.BLUE}[INFO] CSV Report saved to: {filename}{Style.RESET_ALL}")
+        return filename
+
+    @staticmethod
+    def generate_sarif_batch_report(scanners_with_providers: list[tuple[Any, str]], filename: str) -> str:
+        """Generate a batch SARIF 2.1.0 report with all scanners' results.
+
+        Args:
+            scanners_with_providers: List of (scanner, provider_name) tuples.
+            filename: Output filename.
+
+        Returns:
+            The filename of the generated report.
+        """
+        all_results: list[dict[str, Any]] = []
+        for scanner, provider_name in scanners_with_providers:
+            snap = ReportEngine._safe_snapshot(scanner)
+            for res, raw in zip(snap.results, snap.raw_data, strict=False):
+                all_results.append(
+                    {
+                        "ruleId": res["service"],
+                        "level": "error" if res.get("outcome") == "accessible" else "note",
+                        "message": {"text": res["status_text"]},
+                        "locations": [
+                            {
+                                "physicalLocation": {
+                                    "artifactLocation": {"uri": raw.get("url", "N/A")},
+                                }
+                            }
+                        ],
+                        "properties": {"provider": provider_name, "api_key": snap.api_key},
+                    }
+                )
+
+        sarif: dict[str, Any] = {
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+                {
+                    "tool": {"driver": {"name": "apiKeyScan", "version": "2.0.0"}},
+                    "results": all_results,
+                }
+            ],
+        }
+
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(sarif, f, indent=4, default=str)
+        print(f"{Fore.BLUE}[INFO] SARIF Report saved to: {filename}{Style.RESET_ALL}")
+        return filename
+
+    @staticmethod
+    def generate_html_batch_report(scanners_with_providers: list[tuple[Any, str]], filename: str) -> str:
+        """Generate a batch HTML report with sections per provider/key.
+
+        Args:
+            scanners_with_providers: List of (scanner, provider_name) tuples.
+            filename: Output filename.
+
+        Returns:
+            The filename of the generated report.
+        """
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        html_parts = [
+            f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>apiKeyScan Batch Report</title>
+    <style>
+        body {{ font-family: 'Segoe UI', sans-serif; background-color: #1e1e2f; color: #e0e0e0; padding: 20px; }}
+        .container {{ max-width: 1200px; margin: 0 auto; background: #27293d; padding: 20px; border-radius: 8px; }}
+        h1 {{ border-bottom: 2px solid #e14eca; padding-bottom: 10px; color: #ffffff; }}
+        h2 {{ color: #ffeb3b; margin-top: 30px; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+        th, td {{ border: 1px solid #333; padding: 8px; text-align: left; }}
+        th {{ background-color: #1e1e2f; color: #ffeb3b; }}
+        .vulnerable {{ color: #00f2fe; font-weight: bold; }}
+        .restricted {{ color: #fd5d93; font-weight: bold; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>apiKeyScan Batch Report</h1>
+        <p><strong>Date Scanned:</strong> {timestamp}</p>
+        <p><strong>Inputs:</strong> {len(scanners_with_providers)}</p>
+"""
+        ]
+
+        for idx, (scanner, provider_name) in enumerate(scanners_with_providers):
+            snap = ReportEngine._safe_snapshot(scanner)
+            html_parts.append(
+                f"""
+        <h2>Scan {idx + 1}: {html_lib.escape(provider_name.upper())} &mdash; {html_lib.escape(str(snap.api_key))}</h2>
+        <table>
+            <tr><th>Service</th><th>Status</th><th>Severity</th><th>Outcome</th></tr>
+"""
+            )
+            for res in snap.results:
+                outcome = res.get("outcome", "")
+                cls = "vulnerable" if outcome == "accessible" else "restricted" if outcome == "restricted" else ""
+                html_parts.append(
+                    f"            <tr><td>{html_lib.escape(res['service'])}</td>"
+                    f'<td class="{cls}">{html_lib.escape(res["status_text"])}</td>'
+                    f"<td>{html_lib.escape(str(res.get('severity', 'INFO')))}</td>"
+                    f"<td>{html_lib.escape(outcome)}</td></tr>\n"
+                )
+            html_parts.append("        </table>\n")
+
+        html_parts.append(
+            """    </div>
+</body>
+</html>"""
+        )
+
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write("".join(html_parts))
+        print(f"{Fore.BLUE}[INFO] HTML Report saved to: {filename}{Style.RESET_ALL}")
+        return filename
+
+    @staticmethod
+    def generate_manifest(
+        inputs: list[dict[str, Any]],
+        report_files: list[dict[str, Any]],
+        filename: str,
+        bundle_status: str,
+    ) -> str:
+        """Generate a manifest file for the report bundle.
+
+        Args:
+            inputs: List of input entries (key_masked, provider, status, check counts).
+            report_files: List of report file entries (filename, format, write_status).
+            filename: Output filename for the manifest.
+            bundle_status: Overall bundle status ("complete" or "partial").
+
+        Returns:
+            The filename of the generated manifest.
+        """
+        completed = sum(1 for i in inputs if i.get("status") == "completed")
+        failed = sum(1 for i in inputs if i.get("status") == "failed")
+        skipped = sum(1 for i in inputs if i.get("status") == "skipped")
+        terminal_statuses = {"completed", "failed", "skipped"}
+        outcomes_recorded = sum(1 for i in inputs if i.get("status") in terminal_statuses)
+
+        manifest = {
+            "scan_id": f"batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            "timestamp": datetime.now().isoformat(),
+            "inputs": inputs,
+            "reconciliation": {
+                "inputs_total": len(inputs),
+                "outcomes_recorded": outcomes_recorded,
+                "scanners_completed": completed,
+                "scanners_failed": failed,
+                "scanners_skipped": skipped,
+            },
+            "reports": report_files,
+            "bundle_status": bundle_status,
+        }
+
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, indent=4, default=str)
+        print(f"{Fore.BLUE}[INFO] Manifest saved to: {filename}{Style.RESET_ALL}")
+        return filename

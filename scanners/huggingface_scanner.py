@@ -42,11 +42,11 @@ class HuggingFaceScanner(BaseScanner):
         headers: dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
 
         checks = [
-            self._check_whoami(headers),
-            self._check_models(headers),
-            self._check_datasets(headers),
-            self._check_spaces(headers),
-            self._check_inference_endpoints(headers),
+            ("Whoami", self._check_whoami(headers)),
+            ("Models List", self._check_models(headers)),
+            ("Datasets List", self._check_datasets(headers)),
+            ("Spaces List", self._check_spaces(headers)),
+            ("Inference Endpoints", self._check_inference_endpoints(headers)),
         ]
         await self._run_checks(checks)
 

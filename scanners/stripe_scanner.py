@@ -45,13 +45,13 @@ class StripeScanner(BaseScanner):
         headers: dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
 
         checks = [
-            self._check_balance(headers),
-            self._check_charges(headers),
-            self._check_customers(headers),
-            self._check_payouts(headers),
-            self._check_refunds(headers),
-            self._check_products(headers),
-            self._check_webhooks(headers),
+            ("Balance", self._check_balance(headers)),
+            ("Charges List", self._check_charges(headers)),
+            ("Customers List", self._check_customers(headers)),
+            ("Payouts List", self._check_payouts(headers)),
+            ("Refunds List", self._check_refunds(headers)),
+            ("Products List", self._check_products(headers)),
+            ("Webhooks List", self._check_webhooks(headers)),
         ]
         await self._run_checks(checks)
 

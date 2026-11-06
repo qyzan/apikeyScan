@@ -42,11 +42,11 @@ class GitLabScanner(BaseScanner):
         headers: dict[str, str] = {"PRIVATE-TOKEN": self.api_key}
 
         checks = [
-            self._check_user(headers),
-            self._check_projects(headers),
-            self._check_groups(headers),
-            self._check_ssh_keys(headers),
-            self._check_pats(headers),
+            ("User", self._check_user(headers)),
+            ("Projects", self._check_projects(headers)),
+            ("Groups", self._check_groups(headers)),
+            ("SSH Keys", self._check_ssh_keys(headers)),
+            ("Personal Access Tokens", self._check_pats(headers)),
         ]
         await self._run_checks(checks)
 

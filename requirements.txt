@@ -2,3 +2,4 @@ aiohttp>=3.9.0
 colorama>=0.4.6
 pyyaml>=6.0
 boto3>=1.34.0
+cryptography>=43

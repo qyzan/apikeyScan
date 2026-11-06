@@ -65,11 +65,11 @@ class TestBaseScannerLogging:
     """Tests for BaseScanner result and error logging."""
 
     def test_log_result_vulnerable(self):
-        """A 200 response should be classified as VULNERABLE."""
+        """A 200 response with valid data should be classified as ACCESSIBLE."""
         scanner = BaseScanner("test_key", no_color=True)
         resp = _make_response(status=200, body=b'{"data": []}')
         scanner.log_result("Test Service", 200, resp)
-        assert scanner.results[0]["status_text"] == "VULNERABLE"
+        assert scanner.results[0]["status_text"] == "ACCESSIBLE"
         assert scanner.results[0]["severity"] == "HIGH"
 
     def test_log_result_restricted_403(self):
@@ -103,12 +103,12 @@ class TestBaseScannerLogging:
         assert scanner.results[0]["severity"] == "CRITICAL"
 
     def test_log_error(self):
-        """log_error should record a CONNECTION ERROR result."""
+        """log_error should record a CONNECTION ERROR result with ERROR severity."""
         scanner = BaseScanner("test_key", no_color=True)
         scanner.log_error("Test Service", "Connection refused")
         assert scanner.results[0]["status_text"] == "CONNECTION ERROR"
         assert scanner.results[0]["status_code"] is None
-        assert scanner.results[0]["severity"] == "CRITICAL"
+        assert scanner.results[0]["severity"] == "ERROR"
 
     def test_log_error_truncates_long_messages(self):
         """log_error should truncate error messages longer than 120 chars in output."""
@@ -122,12 +122,12 @@ class TestBaseScannerLogging:
         scanner = BaseScanner("test_key", no_color=True)
         scanner.log_custom_result(
             "AWS STS",
-            "VULNERABLE (ACCESS)",
+            "ACCESSIBLE (ACCESS)",
             200,
             "identity confirmed",
             severity=Severity.CRITICAL,
         )
-        assert scanner.results[0]["status_text"] == "VULNERABLE (ACCESS)"
+        assert scanner.results[0]["status_text"] == "ACCESSIBLE (ACCESS)"
         assert scanner.results[0]["severity"] == "CRITICAL"
 
     def test_false_positive_detection(self):
@@ -149,9 +149,11 @@ class TestBaseScannerInit:
         assert scanner.raw_data == []
         assert scanner.max_retries == 3
         assert scanner.rate_limit is None
+        assert scanner.active_checks is True
 
     def test_init_custom_params(self):
         """BaseScanner should accept custom parameters."""
-        scanner = BaseScanner("test_key", timeout=30, max_retries=5, rate_limit=10)
+        scanner = BaseScanner("test_key", timeout=30, max_retries=5, rate_limit=10, active_checks=False)
         assert scanner.max_retries == 5
         assert scanner.rate_limit == 10
+        assert scanner.active_checks is False

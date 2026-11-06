@@ -17,10 +17,25 @@ pentest_*_report.sarif
 
 # Archives
 *.zip
+*.whl
+*.egg
+*.tar.gz
+
+# Build / packaging artifacts
+build/
+dist/
+*.egg-info/
 
 # Virtual environments
 .venv/
 venv/
+
+# Credentials / vaults
+.env
+*.akv
+
+# Reports directory
+reports/
 
 # CodeArts
 .codeartsdoer/

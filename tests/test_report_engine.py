@@ -86,8 +86,8 @@ class TestReportEngine:
 
     def test_mask_key(self):
         """_mask_key should mask keys correctly."""
-        assert ReportEngine._mask_key("1234567890ABCDE") == "12345...ABCDE"
-        assert ReportEngine._mask_key("short") == "***"
+        assert ReportEngine._mask_key("1234567890ABCDE") == "[REDACTED]"
+        assert ReportEngine._mask_key("short") == "[REDACTED]"
 
     def test_all_reports(self, tmp_path):
         """generate_all_reports should produce all 4 format files."""

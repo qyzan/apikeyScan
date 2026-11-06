@@ -40,9 +40,9 @@ class DiscordScanner(BaseScanner):
         headers: dict[str, str] = {"Authorization": f"Bot {self.api_key}"}
 
         checks = [
-            self._check_user(headers),
-            self._check_guilds(headers),
-            self._check_application(headers),
+            ("Get User", self._check_user(headers)),
+            ("Get Guilds", self._check_guilds(headers)),
+            ("Get Application", self._check_application(headers)),
         ]
         await self._run_checks(checks)
 

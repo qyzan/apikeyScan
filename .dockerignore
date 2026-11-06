@@ -1,0 +1,48 @@
+# VCS
+.git/
+.gitignore
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build / packaging artifacts
+build/
+dist/
+*.egg-info/
+*.whl
+*.egg
+
+# Credentials / vaults / secrets
+.env
+*.akv
+**/credentials
+**/credentials.json
+**/service-account*.json
+
+# Reports (generated output, not needed in image)
+pentest_*_report.*
+*.log
+reports/
+
+# Test files (not needed in runtime image)
+tests/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# CodeArts
+.codeartsdoer/
+
+# Misc artifacts
+scanners.zip
+*.md
+!README.md

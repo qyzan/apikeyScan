@@ -1,14 +1,69 @@
 # apiKeyScan configuration preset
 # Usage: python apiKeyScan.py scan --config config.example.yaml
+#
+# Precedence: built-in default < config file < explicit CLI flag.
+# Any field set in this file is overridden by the matching CLI flag.
+#
+# All values below are PLACEHOLDERS — replace with your own before use.
+# No real credentials are included in this file.
 
+# Provider to scan (github, google, aws, stripe, ...)
 provider: google
-key: AIzaSyExampleKeyHere
-project_id: my-project-123
+
+# API key or access key ID to scan
+# Placeholder only — do not use this value.
+key: PLACEHOLDER_REPLACE_WITH_YOUR_KEY
+
+# GCP project ID (required for Google project-scoped checks)
+project_id: your-project-id-placeholder
+
+# Twilio account SID (required for Twilio scans)
+# account_sid: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Twilio API secret (required for Twilio scans)
+# api_secret: PLACEHOLDER_REPLACE_WITH_YOUR_SECRET
+
+# Output file prefix (without extension)
 output: my_scan_report
+
+# Report formats to generate (json, html, csv, sarif)
 formats:
   - json
   - html
   - sarif
+
+# Request timeout in seconds
 timeout: 30
+
+# Max requests per second (rate limiting)
 rate_limit: 10
-notify_slack: https://hooks.slack.com/services/EXAMPLE
+
+# Max concurrent checks
+concurrency: 10
+
+# Connection timeout in seconds
+connect_timeout: 10
+
+# Read timeout in seconds
+read_timeout: 30
+
+# Minimum severity to display (ERROR, HIGH, MEDIUM, LOW, INFO)
+# severity_filter: ERROR
+
+# Disable colored output
+# no_color: false
+
+# Verbose output (show URL and reason)
+# verbose: false
+
+# Quiet mode (suppress routine output; errors still printed)
+# quiet: false
+
+# Overwrite existing report files
+# overwrite: false
+
+# Slack webhook URL for notifications (placeholder only)
+# notify_slack: https://hooks.slack.com/services/PLACEHOLDER
+
+# Discord webhook URL for notifications (placeholder only)
+# notify_discord: https://discord.com/api/webhooks/PLACEHOLDER

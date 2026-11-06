@@ -50,15 +50,15 @@ class GitHubScanner(BaseScanner):
         }
 
         checks = [
-            self._check_user_profile(headers),
-            self._check_repos(headers),
-            self._check_orgs(headers),
-            self._check_gists(headers),
-            self._check_ssh_keys(headers),
-            self._check_packages(headers),
-            self._check_starred(headers),
-            self._check_notifications(headers),
-            self._check_rate_limit(headers),
+            ("User Profile", self._check_user_profile(headers)),
+            ("Repos List", self._check_repos(headers)),
+            ("Organizations", self._check_orgs(headers)),
+            ("Gists", self._check_gists(headers)),
+            ("SSH Keys", self._check_ssh_keys(headers)),
+            ("Packages", self._check_packages(headers)),
+            ("Starred Repos", self._check_starred(headers)),
+            ("Notifications", self._check_notifications(headers)),
+            ("Rate Limit", self._check_rate_limit(headers)),
         ]
         await self._run_checks(checks)
 

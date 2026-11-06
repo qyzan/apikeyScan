@@ -42,11 +42,11 @@ class SlackScanner(BaseScanner):
         headers: dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
 
         checks = [
-            self._check_auth_test(headers),
-            self._check_conversations(headers),
-            self._check_users(headers),
-            self._check_team_info(headers),
-            self._check_files(headers),
+            ("Auth Test", self._check_auth_test(headers)),
+            ("Channels List", self._check_conversations(headers)),
+            ("Users List", self._check_users(headers)),
+            ("Team Info", self._check_team_info(headers)),
+            ("Files List", self._check_files(headers)),
         ]
         await self._run_checks(checks)
 

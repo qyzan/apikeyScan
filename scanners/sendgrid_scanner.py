@@ -44,11 +44,16 @@ class SendGridScanner(BaseScanner):
         headers: dict[str, str] = {"Authorization": f"Bearer {self.api_key}"}
 
         checks = [
-            self._check_api_keys(headers),
-            self._check_mail_send(headers),
-            self._check_suppressions(headers),
-            self._check_templates(headers),
-            self._check_stats(headers),
+            ("API Keys List", self._check_api_keys(headers)),
+            ("Mail Send", self._check_mail_send(headers))
+            if self.active_checks
+            else (
+                "Mail Send",
+                self._skip_check("SendGrid Mail Send (dry-run)", "mutating operation (email send)"),
+            ),
+            ("Suppressions", self._check_suppressions(headers)),
+            ("Templates", self._check_templates(headers)),
+            ("Stats", self._check_stats(headers)),
         ]
         await self._run_checks(checks)
 

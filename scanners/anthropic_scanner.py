@@ -44,9 +44,14 @@ class AnthropicScanner(BaseScanner):
         }
 
         checks = [
-            self._check_messages(headers),
-            self._check_models(headers),
-            self._check_count_tokens(headers),
+            ("Messages API", self._check_messages(headers))
+            if self.active_checks
+            else (
+                "Messages API",
+                self._skip_check("Anthropic Messages API", "billable generation (messages)"),
+            ),
+            ("Models List", self._check_models(headers)),
+            ("Count Tokens", self._check_count_tokens(headers)),
         ]
         await self._run_checks(checks)
 

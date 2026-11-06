@@ -1,7 +1,14 @@
-version: "3.8"
 services:
   apikeyscan:
     build: .
+    user: "1000:1000"
     volumes:
-      - ./reports:/app/reports
-    # Usage: docker-compose run apikeyscan scan -p google -k AIzaSy...
+      - apikeyscan-reports:/app/reports
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  apikeyscan-reports:

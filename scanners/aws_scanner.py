@@ -11,7 +11,7 @@ from typing import Any
 
 from colorama import Fore, Style
 
-from core.base_scanner import BaseScanner, Severity
+from core.base_scanner import BaseScanner, CheckOutcome, ExecutionStatus, Severity
 
 try:
     import boto3
@@ -32,6 +32,7 @@ class AWSScanner(BaseScanner):
     """
 
     PROVIDER_NAME = "aws"
+    SUPPORTS_HTTP_TRANSPORT = False
     CHECKS = [
         "AWS STS (GetCallerIdentity)",
         "AWS S3 (ListBuckets)",
@@ -92,12 +93,13 @@ class AWSScanner(BaseScanner):
             resp = call_fn()
             self.log_custom_result(
                 service_name=f"{service_name} ({action_name})",
-                status_text="VULNERABLE (ACCESS)",
+                status_text="ACCESSIBLE (ACCESS)",
                 status_code=200,
                 response_body=str(resp) if resp else "Success",
                 url=f"boto3://{service_name}/{action_name}",
                 severity=severity,
                 color=self._c(Fore.GREEN),
+                outcome=CheckOutcome.ACCESSIBLE,
             )
         except ClientError as e:
             self.log_custom_result(
@@ -108,6 +110,7 @@ class AWSScanner(BaseScanner):
                 url=f"boto3://{service_name}/{action_name}",
                 severity=Severity.INFO,
                 color=self._c(Fore.RED),
+                outcome=CheckOutcome.RESTRICTED,
             )
         except Exception as e:
             self.log_custom_result(
@@ -116,8 +119,9 @@ class AWSScanner(BaseScanner):
                 status_code=None,
                 response_body=str(e),
                 url=f"boto3://{service_name}/{action_name}",
-                severity=Severity.CRITICAL,
+                severity=Severity.ERROR,
                 color=self._c(Fore.RED),
+                outcome=CheckOutcome.ERROR,
             )
 
     def _scan_sync(self) -> None:
@@ -134,6 +138,7 @@ class AWSScanner(BaseScanner):
                 url="boto3://sts/GetCallerIdentity",
                 severity=Severity.CRITICAL,
                 color=self._c(Fore.RED),
+                outcome=CheckOutcome.RESTRICTED,
             )
             print(
                 f"{self._c(Fore.RED)}[!] Auth failed completely (STS rejected). Keys may be invalid or globally revoked.{Style.RESET_ALL}"
@@ -142,12 +147,13 @@ class AWSScanner(BaseScanner):
 
         self.log_custom_result(
             service_name="AWS STS (GetCallerIdentity)",
-            status_text="VULNERABLE (ACCESS)",
+            status_text="ACCESSIBLE (ACCESS)",
             status_code=200,
             response_body="Successfully retrieved caller identity",
             url="boto3://sts/GetCallerIdentity",
             severity=Severity.CRITICAL,
             color=self._c(Fore.GREEN),
+            outcome=CheckOutcome.ACCESSIBLE,
         )
 
         checks: dict[str, Any] = {
@@ -169,14 +175,34 @@ class AWSScanner(BaseScanner):
         print(f"\n{self._c(Fore.CYAN)}=== AWS CREDENTIALS RECON ==={Style.RESET_ALL}\n")
 
         if not BOTO3_AVAILABLE:
-            print(f"{self._c(Fore.RED)}[!] The 'boto3' Python library is required for AWS scanning.{Style.RESET_ALL}")
-            print(f"{self._c(Fore.YELLOW)}Install it: pip install boto3{Style.RESET_ALL}")
-            return
-
-        if not self.api_key or not self.aws_secret:
-            print(
-                f"{self._c(Fore.RED)}[!] AWS scanning requires BOTH Access Key ID (-k) and Secret Access Key (--secret).{Style.RESET_ALL}"
+            self.planned_checks = 1
+            self.log_custom_result(
+                service_name="AWS (all checks)",
+                status_text="SKIPPED (PREREQUISITE)",
+                status_code=None,
+                response_body="boto3 library not installed — pip install boto3",
+                url="N/A",
+                severity=Severity.INFO,
+                color=self._c(Fore.YELLOW),
+                outcome=CheckOutcome.SKIPPED,
+                execution_status=ExecutionStatus.SKIPPED,
             )
             return
 
+        if not self.api_key or not self.aws_secret:
+            self.planned_checks = 1
+            self.log_custom_result(
+                service_name="AWS (all checks)",
+                status_text="SKIPPED (MISSING CREDENTIALS)",
+                status_code=None,
+                response_body="AWS scanning requires both Access Key ID (-k) and Secret Access Key (--secret)",
+                url="N/A",
+                severity=Severity.INFO,
+                color=self._c(Fore.YELLOW),
+                outcome=CheckOutcome.SKIPPED,
+                execution_status=ExecutionStatus.SKIPPED,
+            )
+            return
+
+        self.planned_checks = len(self.CHECKS)
         await asyncio.to_thread(self._scan_sync)

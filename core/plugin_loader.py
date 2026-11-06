@@ -9,11 +9,16 @@ import pkgutil
 from pathlib import Path
 from typing import Any
 
+from colorama import Fore, Style
+
 from core.base_scanner import BaseScanner
 
 
 def load_scanners() -> dict[str, type[BaseScanner]]:
     """Dynamically discover and load all scanner classes from scanners/ dir.
+
+    Scanner modules that fail to import are reported as unavailable with
+    their ImportError reason — never silently skipped.
 
     Returns:
         Dict mapping provider names to scanner classes.
@@ -31,7 +36,8 @@ def load_scanners() -> dict[str, type[BaseScanner]]:
                 if isinstance(attr, type) and issubclass(attr, BaseScanner) and attr.__name__ != "BaseScanner":
                     provider = getattr(attr, "PROVIDER_NAME", attr.__name__.replace("Scanner", "").lower())
                     scanners[provider] = attr
-        except ImportError:
+        except ImportError as e:
+            print(f"{Fore.YELLOW}[!] Scanner plugin '{name}' unavailable: {e}" f"{Style.RESET_ALL}")
             continue
     return scanners
 

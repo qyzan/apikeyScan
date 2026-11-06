@@ -41,11 +41,11 @@ class AzureScanner(BaseScanner):
         print(f"\n{self._c(Fore.CYAN)}=== AZURE API RECON ==={Style.RESET_ALL}\n")
 
         checks = [
-            self._check_maps(),
-            self._check_translator(),
-            self._check_bing(),
-            self._check_face(),
-            self._check_text_analytics(),
+            ("Azure Maps API", self._check_maps()),
+            ("Azure Translator API", self._check_translator()),
+            ("Azure Bing Search API", self._check_bing()),
+            ("Azure Face API", self._check_face()),
+            ("Azure Text Analytics API", self._check_text_analytics()),
         ]
         await self._run_checks(checks)
 
