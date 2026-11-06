@@ -8,6 +8,7 @@ import json
 import os
 import secrets
 import stat
+import sys
 import uuid
 from pathlib import Path
 from typing import Any
@@ -61,7 +62,7 @@ def read_vault(path: Path, password: str) -> dict[str, Any]:
 def private_directory(path: Path) -> None:
     """Create a NEW directory, set and verify its operator-only permissions."""
     path.mkdir(mode=0o700, parents=False, exist_ok=False)
-    if os.name != "nt":
+    if sys.platform != "win32":
         if stat.S_IMODE(path.stat().st_mode) != 0o700:
             raise OSError("Vault directory permissions unavailable")
         return
@@ -188,7 +189,7 @@ class Terminal:
     def password(self) -> str:
         """Read without echo using the dedicated terminal, not redirected stdin."""
         self.write("Vault password: ")
-        if os.name == "nt":
+        if sys.platform == "win32":
             import msvcrt
 
             chars: list[str] = []
